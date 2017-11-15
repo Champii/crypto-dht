@@ -69,21 +69,26 @@
       }
     },
     created () {
-      astilectron.send({name: 'getInfos'}, (response) => {
-        console.log(response)
-        const infos = response.payload
+      this.timer = setInterval(() => {
+        astilectron.send({name: 'getInfos'}, (response) => {
+          console.log(response)
+          const infos = response.payload
 
-        const wallets = infos.wallets
-        this.statsCards[0].value = wallets.reduce((memo, item) => memo + item.amount, 0) + ' ctd'
-        this.statsCards[0].footerText = wallets.length + ' wallets'
+          const wallets = infos.wallets
+          this.statsCards[0].value = wallets.reduce((memo, item) => memo + item.amount, 0) + ' ctd'
+          this.statsCards[0].footerText = wallets.length + ' wallets'
 
-        const minerInfo = infos.minerInfo
-        this.statsCards[2].value = minerInfo.hashrate + ' h/s'
-        this.statsCards[2].footerText = minerInfo.running ? 'Running' : 'Stopped'
+          const minerInfo = infos.minerInfo
+          this.statsCards[2].value = minerInfo.hashrate + ' h/s'
+          this.statsCards[2].footerText = minerInfo.running ? 'Running' : 'Stopped'
 
-        this.statsCards[3].value = infos.nodesNb
-        this.statsCards[3].footerText = infos.synced ? 'Synced' : 'Syncing...'
-      })
+          this.statsCards[3].value = infos.nodesNb
+          this.statsCards[3].footerText = infos.synced ? 'Synced' : 'Syncing...'
+        })
+      }, 1000)
+    },
+    destroyed () {
+      this.timer.stop()
     }
   }
 

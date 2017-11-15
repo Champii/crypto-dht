@@ -120,30 +120,35 @@ func (this *Blockchain) Start() error {
 		go this.StatsLoop()
 	}
 
-	this.Sync()
+	go func() {
+		this.Sync()
 
-	if !this.synced {
-		return errors.New("Unable to sync")
-	}
+		if !this.synced {
+			this.logger.Error("Unable to sync")
 
-	if this.options.Wallets {
-		this.ShowWallets()
-
-		os.Exit(0)
-	}
-
-	if len(this.options.Send) > 0 {
-		if err := this.SendTo(); err != nil {
-			return err
+			return
 		}
 
-		time.Sleep(time.Second * 5)
-		os.Exit(0)
-	}
+		if this.options.Wallets {
+			this.ShowWallets()
 
-	if this.options.Mine {
-		this.Mine()
-	}
+		}
+
+		if len(this.options.Send) > 0 {
+			if err := this.SendTo(); err != nil {
+				this.logger.Error("Unable to Send", err)
+
+				return
+			}
+
+			time.Sleep(time.Second * 5)
+			os.Exit(0)
+		}
+
+		if this.options.Mine {
+			this.Mine()
+		}
+	}()
 
 	return nil
 }
@@ -161,11 +166,11 @@ func (this *Blockchain) SendTo() error {
 		return errors.New("Invalid amount: " + splited[0])
 	}
 
-	_, ok := this.unspentTxOut[splited[1]]
+	// _, ok := this.unspentTxOut[splited[1]]
 
-	if !ok {
-		return errors.New("Unknown dest address: " + splited[1])
-	}
+	// if !ok {
+	// 	return errors.New("Unknown dest address: " + splited[1])
+	// }
 
 	tx := NewTransaction(amount, []byte(splited[1]), this)
 
@@ -194,7 +199,6 @@ func (this *Blockchain) Logger() *logging.Logger {
 func (this *Blockchain) Dispatch(cmd dht.Packet) interface{} {
 	switch cmd.Data.(dht.CustomCmd).Command {
 	case COMMAND_CUSTOM_NEW_TRANSACTION:
-		this.logger.Info("New Transaction", cmd)
 		var tx Transaction
 
 		msgpack.Unmarshal(cmd.Data.(dht.CustomCmd).Data.([]uint8), &tx)
@@ -273,6 +277,8 @@ func (this *Blockchain) Mine() {
 			this.stats.Update()
 		}
 	}()
+
+	this.running = true
 
 	go func() {
 		for this.running {

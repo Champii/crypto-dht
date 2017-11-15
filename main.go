@@ -181,30 +181,33 @@ type WalletClient struct {
 	Amount  float64 `json:"amount"`
 }
 
+func GetBaseInfos() BaseInfo {
+	wallets := bc.Wallets()
+	var walletsRes []WalletClient
+	for _, wallet := range wallets {
+		walletsRes = append(walletsRes, WalletClient{
+			Name:    wallet.Name(),
+			Address: blockchain.SanitizePubKey(wallet.Pub()),
+			Amount:  bc.GetAvailableFunds(wallet.Pub()),
+		})
+	}
+
+	return BaseInfo{
+		Wallets: walletsRes,
+		NodesNb: bc.GetConnectedNodesNb(),
+		Synced:  bc.Synced(),
+		MinerInfo: MinerInfo{
+			Hashrate: bc.Stats().HashesPerSecAvg,
+			Running:  bc.Running(),
+		},
+	}
+}
+
 // handleMessages handles messages
 func handleMessages(w *astilectron.Window, m bootstrap.MessageIn) (payload interface{}, err error) {
 	switch m.Name {
 	case "getInfos":
-		wallets := bc.Wallets()
-		var walletsRes []WalletClient
-		for _, wallet := range wallets {
-			walletsRes = append(walletsRes, WalletClient{
-				Name:    wallet.Name(),
-				Address: blockchain.SanitizePubKey(wallet.Pub()),
-				Amount:  bc.GetAvailableFunds(wallet.Pub()),
-			})
-		}
-
-		payload = BaseInfo{
-			Wallets: walletsRes,
-			NodesNb: bc.GetConnectedNodesNb(),
-			Synced:  bc.Synced(),
-			MinerInfo: MinerInfo{
-				Hashrate: bc.Stats().HashesPerSecAvg,
-				Running:  bc.Running(),
-			},
-		}
-
+		payload = GetBaseInfos()
 	}
 	return
 }
@@ -221,7 +224,7 @@ func gui(bc_ *blockchain.Blockchain) {
 			app = a
 			bc = bc_
 
-			w.OpenDevTools()
+			// w.OpenDevTools()
 			// w.On(astilectron.EventNameWindowEventMessage, func(e astilectron.Event) (deleteListener bool) {
 			// 	var m string
 			// 	e.Message.Unmarshal(&m)
