@@ -10,13 +10,8 @@
             <p>Stats</p>
           </a>
         </li>
-        <drop-down title="5 Notifications" icon="ti-bell">
+        <drop-down title="0 Notifications" icon="ti-bell">
 
-          <li><a>Notification 1</a></li>
-          <li><a>Notification 2</a></li>
-          <li><a>Notification 3</a></li>
-          <li><a>Notification 4</a></li>
-          <li><a>Another notification</a></li>
 
         </drop-down>
         <li>

@@ -1,5 +1,5 @@
 {
-  "app_name": "Crypt-DHT",
+  "app_name": "crypto-dht",
   "environments": [
     {"arch": "amd64", "os": "linux"}
   ],

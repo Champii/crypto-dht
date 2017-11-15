@@ -10,7 +10,7 @@ import (
 type Stats struct {
 	lastUpdate      int64
 	lastHashes      int
-	hashesPerSecAvg int
+	HashesPerSecAvg int
 	hashesPerSec    []int
 	foundBlocks     int
 }
@@ -24,18 +24,18 @@ func (this *Stats) Update() {
 		this.hashesPerSec = this.hashesPerSec[1:]
 	}
 
-	this.hashesPerSecAvg = 0
+	this.HashesPerSecAvg = 0
 
 	for _, v := range this.hashesPerSec {
-		this.hashesPerSecAvg += v
+		this.HashesPerSecAvg += v
 	}
 
-	this.hashesPerSecAvg /= len(this.hashesPerSec)
+	this.HashesPerSecAvg /= len(this.hashesPerSec)
 	this.lastUpdate = time.Now().Unix()
 	this.lastHashes = 0
 }
 
-func (this *Blockchain) Stats() {
+func (this *Blockchain) StatsLoop() {
 
 	for {
 		goterm.Clear()
@@ -56,7 +56,7 @@ func (this *Blockchain) Stats() {
 			if len(this.stats.hashesPerSec) > 0 {
 				goterm.Println("Hash/s:       ", this.stats.hashesPerSec[len(this.stats.hashesPerSec)-1])
 			}
-			goterm.Println("Hash/s avg:   ", this.stats.hashesPerSecAvg)
+			goterm.Println("Hash/s avg:   ", this.stats.HashesPerSecAvg)
 			goterm.Println("Found blocks: ", this.stats.foundBlocks)
 
 		}

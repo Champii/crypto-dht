@@ -1,9 +1,8 @@
 package main
 
 import (
-	"io/ioutil"
+	"fmt"
 	"os"
-	"os/user"
 	"strconv"
 	"strings"
 	"time"
@@ -143,7 +142,7 @@ func manageArgs() {
 		if options.NoGui {
 			client.Wait()
 		} else {
-			gui()
+			gui(client)
 		}
 
 		return nil
@@ -161,47 +160,56 @@ var (
 	BuiltAt string
 	window  *astilectron.Window
 	app     *astilectron.Astilectron
+	bc      *blockchain.Blockchain
 )
 
-// ListItem represents a list item
-type ListItem struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+type MinerInfo struct {
+	Hashrate int  `json:"hashrate"`
+	Running  bool `json:"running"`
+}
+
+type BaseInfo struct {
+	MinerInfo MinerInfo      `json:"minerInfo"`
+	Wallets   []WalletClient `json:"wallets"`
+	NodesNb   int            `json:"nodesNb"`
+	Synced    bool           `json:"synced"`
+}
+
+type WalletClient struct {
+	Name    string  `json:"name"`
+	Address string  `json:"address"`
+	Amount  float64 `json:"amount"`
 }
 
 // handleMessages handles messages
 func handleMessages(w *astilectron.Window, m bootstrap.MessageIn) (payload interface{}, err error) {
 	switch m.Name {
-	case "get.list":
-		// Get user
-		var u *user.User
-		if u, err = user.Current(); err != nil {
-			return
+	case "getInfos":
+		wallets := bc.Wallets()
+		var walletsRes []WalletClient
+		for _, wallet := range wallets {
+			walletsRes = append(walletsRes, WalletClient{
+				Name:    wallet.Name(),
+				Address: blockchain.SanitizePubKey(wallet.Pub()),
+				Amount:  bc.GetAvailableFunds(wallet.Pub()),
+			})
 		}
 
-		// Read dir
-		var files []os.FileInfo
-		if files, err = ioutil.ReadDir(u.HomeDir); err != nil {
-			return
+		payload = BaseInfo{
+			Wallets: walletsRes,
+			NodesNb: bc.GetConnectedNodesNb(),
+			Synced:  bc.Synced(),
+			MinerInfo: MinerInfo{
+				Hashrate: bc.Stats().HashesPerSecAvg,
+				Running:  bc.Running(),
+			},
 		}
 
-		// Build list items
-		var items []ListItem
-		for _, f := range files {
-			var item = ListItem{Name: f.Name()}
-			if f.IsDir() {
-				item.Type = "dir"
-			} else {
-				item.Type = "file"
-			}
-			items = append(items, item)
-		}
-		payload = items
 	}
 	return
 }
 
-func gui() {
+func gui(bc_ *blockchain.Blockchain) {
 	err := bootstrap.Run(bootstrap.Options{
 		Asset:          Asset,
 		RestoreAssets:  RestoreAssets,
@@ -211,21 +219,38 @@ func gui() {
 		OnWait: func(a *astilectron.Astilectron, w *astilectron.Window, _ *astilectron.Menu, t *astilectron.Tray, _ *astilectron.Menu) error {
 			window = w
 			app = a
+			bc = bc_
+
+			w.OpenDevTools()
+			// w.On(astilectron.EventNameWindowEventMessage, func(e astilectron.Event) (deleteListener bool) {
+			// 	var m string
+			// 	e.Message.Unmarshal(&m)
+			// 	fmt.Println("Received message", m)
+			// 	// w.Send("LOL")
+
+			// 	return
+			// })
+
+			// w.Send("Ouesh")
 
 			return nil
 		},
 		WindowOptions: &astilectron.WindowOptions{
 			BackgroundColor: astilectron.PtrStr("#333"),
 			Center:          astilectron.PtrBool(true),
-			Height:          astilectron.PtrInt(700),
-			Width:           astilectron.PtrInt(1100),
+			Height:          astilectron.PtrInt(450),
+			Width:           astilectron.PtrInt(1000),
+			Resizable:       astilectron.PtrBool(false),
+			Frame:           astilectron.PtrBool(false),
+			HasShadow:       astilectron.PtrBool(true),
+			Transparent:     astilectron.PtrBool(true),
 		},
 	})
 
 	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
-
 }
 
 func cluster(count int, options blockchain.BlockchainOptions) {
@@ -257,7 +282,6 @@ func cluster(count int, options blockchain.BlockchainOptions) {
 		client := startOne(options2)
 
 		network = append(network, client)
-
 	}
 
 	for {

@@ -39,6 +39,7 @@ type Blockchain struct {
 	synced              bool
 	mustStop            bool
 	stats               *Stats
+	running             bool
 }
 
 type BlockchainOptions struct {
@@ -116,7 +117,7 @@ func (this *Blockchain) Start() error {
 	}
 
 	if this.options.Stats {
-		go this.Stats()
+		go this.StatsLoop()
 	}
 
 	this.Sync()
@@ -274,7 +275,7 @@ func (this *Blockchain) Mine() {
 	}()
 
 	go func() {
-		for {
+		for this.running {
 			block := NewBlock(this)
 
 			block.Mine(this.stats, &this.mustStop)
@@ -309,4 +310,25 @@ func (this *Blockchain) Mine() {
 			})
 		}
 	}()
+}
+
+func (this *Blockchain) Wallets() map[string]*Wallet {
+	return this.wallets
+}
+
+func (this *Blockchain) Synced() bool {
+	return this.synced
+}
+
+func (this *Blockchain) Running() bool {
+	return this.running
+}
+
+func (this *Blockchain) Stats() *Stats {
+	return this.stats
+}
+
+func (this *Blockchain) GetConnectedNodesNb() int {
+	// return this.client.
+	return 0
 }

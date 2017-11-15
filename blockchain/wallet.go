@@ -18,6 +18,14 @@ type Wallet struct {
 	pub  []byte
 }
 
+func (this *Wallet) Name() string{
+	return this.name
+}
+
+func (this *Wallet) Pub() []byte {
+	return this.pub
+}
+
 func GetWallets(bc *Blockchain) error {
 	wallets, err := ioutil.ReadDir(bc.options.Folder + "/wallets")
 

@@ -10,12 +10,16 @@ import Icons from 'src/components/Dashboard/Views/Icons.vue'
 import Maps from 'src/components/Dashboard/Views/Maps.vue'
 import Typography from 'src/components/Dashboard/Views/Typography.vue'
 import TableList from 'src/components/Dashboard/Views/TableList.vue'
+import Wallets from 'src/components/Dashboard/Views/Wallets.vue'
+import History from 'src/components/Dashboard/Views/History.vue'
+import Mining from 'src/components/Dashboard/Views/Mining.vue'
+import Dht from 'src/components/Dashboard/Views/Dht.vue'
 
 const routes = [
   {
     path: '/',
     component: DashboardLayout,
-    redirect: '/admin/overview'
+    redirect: '/admin/dashboard'
   },
   {
     path: '/admin',
@@ -23,40 +27,40 @@ const routes = [
     redirect: '/admin/stats',
     children: [
       {
-        path: 'overview',
-        name: 'overview',
+        path: 'dashboard',
+        name: 'dashboard',
         component: Overview
       },
       {
-        path: 'stats',
-        name: 'stats',
-        component: UserProfile
+        path: 'wallets',
+        name: 'wallets',
+        component: Wallets
       },
       {
-        path: 'notifications',
-        name: 'notifications',
-        component: Notifications
+        path: 'history',
+        name: 'history',
+        component: History
       },
       {
-        path: 'icons',
-        name: 'icons',
-        component: Icons
+        path: 'mining',
+        name: 'mining',
+        component: Mining
       },
       {
-        path: 'maps',
-        name: 'maps',
-        component: Maps
-      },
-      {
-        path: 'typography',
-        name: 'typography',
-        component: Typography
-      },
-      {
-        path: 'table-list',
-        name: 'table-list',
-        component: TableList
+        path: 'dht',
+        name: 'dht',
+        component: Dht
       }
+      // {
+      //   path: 'typography',
+      //   name: 'typography',
+      //   component: Typography
+      // },
+      // {
+      //   path: 'table-list',
+      //   name: 'table-list',
+      //   component: TableList
+      // }
     ]
   },
   { path: '*', component: NotFound }
