@@ -5,6 +5,8 @@ Blockchain over DHT
 
 Based on my own DHT implementation in GO
 
+![Screenshot](https://github.com/champii/crypto-dht/raw/master/screenshot.png "Screenshot")
+
 ## Usage
 
 ```
@@ -37,6 +39,7 @@ OPTIONS:
 - Store unspentTxOut and blockHeigh on disk to avoid resync all the chain each time
 - DHT's OnStore to avoid saving bad blocks
 - Merkel tree
+- Better GUI
 - Fix that "bad block" error that pop's sometimes
 - Transactions history for a wallet
 - Manage wallets
