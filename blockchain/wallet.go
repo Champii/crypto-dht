@@ -1,4 +1,4 @@
-package main
+package blockchain
 
 import (
 	"crypto/ecdsa"
@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 type Wallet struct {
@@ -43,10 +44,15 @@ func GetWallets(bc *Blockchain) error {
 			return err
 		}
 
-		x509EncodedPub, _ := x509.MarshalPKIXPublicKey(privateKey.Public())
+		x509EncodedPub, err := x509.MarshalPKIXPublicKey(privateKey.Public())
+
+		if err != nil {
+			return err
+		}
+
 		pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
 
-		bc.logger.Info("Loaded wallet", wallet.Name(), string(pemEncodedPub))
+		bc.logger.Info("Loaded wallet", wallet.Name(), SanitizePubKey(pemEncodedPub))
 
 		bc.wallets[wallet.Name()] = &Wallet{
 			name: wallet.Name(),
@@ -78,7 +84,11 @@ func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
 		return nil, err
 	}
 
-	x509EncodedPub, _ := x509.MarshalPKIXPublicKey(key.Public())
+	x509EncodedPub, err := x509.MarshalPKIXPublicKey(key.Public())
+
+	if err != nil {
+		return nil, err
+	}
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
 
 	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: priv})
@@ -89,10 +99,19 @@ func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
 		return nil, err
 	}
 
-	bc.logger.Info("Created wallet", name+".key", string(pemEncodedPub))
+	bc.logger.Info("Created wallet", name+".key", SanitizePubKey(pemEncodedPub))
+
 	return &Wallet{
 		name: name + ".key",
 		key:  key,
 		pub:  pemEncodedPub,
 	}, nil
+}
+
+func SanitizePubKey(pub []byte) string {
+	pemEncodedPubStr := strings.Replace(string(pub), "-----BEGIN PUBLIC KEY-----", "", 1)
+	pemEncodedPubStr = strings.Replace(pemEncodedPubStr, "-----END PUBLIC KEY-----", "", 1)
+	pemEncodedPubStr = strings.Replace(pemEncodedPubStr, "\n", "", -1)
+
+	return pemEncodedPubStr
 }

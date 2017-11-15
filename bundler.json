@@ -1,0 +1,8 @@
+{
+  "app_name": "Crypt-DHT",
+  "environments": [
+    {"arch": "amd64", "os": "linux"}
+  ],
+  "input_path": "./",
+  "output_path": "./build"
+}

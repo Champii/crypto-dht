@@ -1,31 +1,16 @@
 package main
 
-// func main() {
-
-// 	if bc := New(); bc == nil {
-// 		fmt.Println("ERROR")
-// 	}
-
-// 	// Start state: not ready
-// 	// Verify Wallet
-// 	// If non existant -> Create wallet
-// 	// Else, deserialize in RAM
-// 	// Connect to DHT
-// 	// Get blockchain infos from different sources
-// 	// Verify all sources concordance
-// 	// Start to async get all blocks + verify on the go
-// 	// When got all blocks:
-// 	// Change state: Ready
-// 	// Start listeners on NewBlock event and NewTransaction event
-// 	// Start mining
-// }
-
 import (
+	"io/ioutil"
 	"os"
+	"os/user"
 	"strconv"
 	"strings"
 	"time"
 
+	astilectron "github.com/asticode/go-astilectron"
+	bootstrap "github.com/asticode/go-astilectron-bootstrap"
+	"github.com/champii/crypto-dht/blockchain"
 	"github.com/urfave/cli"
 )
 
@@ -92,9 +77,21 @@ COPYRIGHT:
 			Name:  "s",
 			Usage: "Stat mode",
 		},
+		cli.StringFlag{
+			Name:  "S, send",
+			Usage: "Send coins from main.key. Must be of the form 'amount:destAddress'",
+		},
 		cli.BoolFlag{
 			Name:  "m",
 			Usage: "Mine",
+		},
+		cli.BoolFlag{
+			Name:  "w",
+			Usage: "Show wallets and amount",
+		},
+		cli.BoolFlag{
+			Name:  "g",
+			Usage: "Deactivate GUI",
 		},
 		cli.IntFlag{
 			Name:  "n, network",
@@ -103,7 +100,7 @@ COPYRIGHT:
 		},
 		cli.IntFlag{
 			Name:  "v, verbose",
-			Value: 4,
+			Value: 3,
 			Usage: "Verbose `level`, 0 for CRITICAL and 5 for DEBUG",
 		},
 	}
@@ -117,13 +114,16 @@ func manageArgs() {
 	app := prepareArgs()
 
 	app.Action = func(c *cli.Context) error {
-		options := BlockchainOptions{
+		options := blockchain.BlockchainOptions{
 			ListenAddr:    c.String("p"),
 			BootstrapAddr: c.String("b"),
 			Folder:        c.String("f"),
+			Send:          c.String("S"),
 			Verbose:       c.Int("v"),
 			Stats:         c.Bool("s"),
+			Wallets:       c.Bool("w"),
 			Interactif:    c.Bool("i"),
+			NoGui:         c.Bool("g"),
 			Mine:          c.Bool("m"),
 		}
 
@@ -133,14 +133,18 @@ func manageArgs() {
 			return nil
 		}
 
-		client := New(options)
+		client := blockchain.New(options)
 
 		if err := client.Start(); err != nil {
 			client.Logger().Critical(err)
 			return err
 		}
 
-		client.Wait()
+		if options.NoGui {
+			client.Wait()
+		} else {
+			gui()
+		}
 
 		return nil
 	}
@@ -152,8 +156,80 @@ func main() {
 	manageArgs()
 }
 
-func cluster(count int, options BlockchainOptions) {
-	network := []*Blockchain{}
+var (
+	AppName string
+	BuiltAt string
+	window  *astilectron.Window
+	app     *astilectron.Astilectron
+)
+
+// ListItem represents a list item
+type ListItem struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// handleMessages handles messages
+func handleMessages(w *astilectron.Window, m bootstrap.MessageIn) (payload interface{}, err error) {
+	switch m.Name {
+	case "get.list":
+		// Get user
+		var u *user.User
+		if u, err = user.Current(); err != nil {
+			return
+		}
+
+		// Read dir
+		var files []os.FileInfo
+		if files, err = ioutil.ReadDir(u.HomeDir); err != nil {
+			return
+		}
+
+		// Build list items
+		var items []ListItem
+		for _, f := range files {
+			var item = ListItem{Name: f.Name()}
+			if f.IsDir() {
+				item.Type = "dir"
+			} else {
+				item.Type = "file"
+			}
+			items = append(items, item)
+		}
+		payload = items
+	}
+	return
+}
+
+func gui() {
+	err := bootstrap.Run(bootstrap.Options{
+		Asset:          Asset,
+		RestoreAssets:  RestoreAssets,
+		Homepage:       "index.html",
+		MessageHandler: handleMessages,
+		MenuOptions:    []*astilectron.MenuItemOptions{},
+		OnWait: func(a *astilectron.Astilectron, w *astilectron.Window, _ *astilectron.Menu, t *astilectron.Tray, _ *astilectron.Menu) error {
+			window = w
+			app = a
+
+			return nil
+		},
+		WindowOptions: &astilectron.WindowOptions{
+			BackgroundColor: astilectron.PtrStr("#333"),
+			Center:          astilectron.PtrBool(true),
+			Height:          astilectron.PtrInt(700),
+			Width:           astilectron.PtrInt(1100),
+		},
+	})
+
+	if err != nil {
+		return
+	}
+
+}
+
+func cluster(count int, options blockchain.BlockchainOptions) {
+	network := []*blockchain.Blockchain{}
 	i := 0
 
 	if len(options.BootstrapAddr) == 0 {
@@ -189,8 +265,8 @@ func cluster(count int, options BlockchainOptions) {
 	}
 }
 
-func startOne(options BlockchainOptions) *Blockchain {
-	client := New(options)
+func startOne(options blockchain.BlockchainOptions) *blockchain.Blockchain {
+	client := blockchain.New(options)
 
 	if err := client.Start(); err != nil {
 		client.Logger().Critical(err)
