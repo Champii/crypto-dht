@@ -34,6 +34,15 @@ OPTIONS:
   -V, --version                Print version
 ```
 
+## Build
+
+```
+$> go get -u github.com/asticode/go-astilectron-bundler/...
+$> ./scripts/build.sh
+```
+
+The output binary will be in `./build/linux-amd64/crypto-dht`
+
 ## Todo
 
 - Store unspentTxOut and blockHeigh on disk to avoid resync all the chain each time

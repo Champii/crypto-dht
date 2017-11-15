@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd client
-# npm install
+npm install
 npm run build
 cd ..
 rm -r $(pwd)/resources/app
