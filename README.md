@@ -1,5 +1,5 @@
 # crypto-dht
-Blockchain over DHT
+Experimental Blockchain over DHT
 
 ## Info
 
@@ -17,21 +17,22 @@ USAGE:
   crypto-dht [options]
 
 VERSION:
-  0.0.1
+  0.1.0
 
 OPTIONS:
-  -b value, --bootstrap value  Connect to bootstrap node ip:port
-  -p value, --port value       Listening port (default: "0.0.0.0:3000")
-  -f value, --folder value     Base Folder (default: "/home/champii/.crypto-dht")
-  -i                           Interactif
-  -s                           Stat mode
-  -S value, --send value       Send coins from main.key. Must be of the form 'amount:destAddress'
-  -m                           Mine
-  -w                           Show wallets and amount
-  -n nodes, --network nodes    Spawn X new nodes network. If -b is not specified, a new network is created. (default: 0)
-  -v level, --verbose level    Verbose level, 0 for CRITICAL and 5 for DEBUG (default: 3)
-  -h, --help                   Print help
-  -V, --version                Print version
+  -c value, --connect value  Connect to node ip:port. If not set, startup a bootstrap node.
+  -l value, --listen value   Listening address and port (default: "0.0.0.0:3000")
+  -f value, --folder value   Base Folder (default: "/home/champii/.crypto-dht")
+  -i                         Interactif
+  -s                         Stat mode
+  -S value, --send value     Send coins from main.key. Must be of the form 'amount:destAddress'
+  -m                         Mine
+  -w                         Show wallets and amount
+  -g                         Deactivate GUI
+  -n nodes, --network nodes  Spawn X new nodes network. If -b is not specified, a new network is created. (default: 0)
+  -v level, --verbose level  Verbose level, 0 for CRITICAL and 5 for DEBUG (default: 3)
+  -h, --help                 Print help
+  -V, --version              Print version
 ```
 
 ## Build

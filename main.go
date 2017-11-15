@@ -48,19 +48,19 @@ COPYRIGHT:
 	app := cli.NewApp()
 
 	app.Name = "Crypto-Dht"
-	app.Version = "0.0.1"
+	app.Version = "0.1.0"
 	app.Compiled = time.Now()
 
 	app.Usage = "Experimental Blockchain over DHT"
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "b, bootstrap",
-			Usage: "Connect to bootstrap node ip:port",
+			Name:  "c, connect",
+			Usage: "Connect to node ip:port. If not set, startup a bootstrap node.",
 		},
 		cli.StringFlag{
-			Name:  "p, port",
-			Usage: "Listening port",
+			Name:  "l, listen",
+			Usage: "Listening address and port",
 			Value: "0.0.0.0:3000",
 		},
 		cli.StringFlag{
@@ -114,8 +114,8 @@ func manageArgs() {
 
 	app.Action = func(c *cli.Context) error {
 		options := blockchain.BlockchainOptions{
-			ListenAddr:    c.String("p"),
-			BootstrapAddr: c.String("b"),
+			ListenAddr:    c.String("l"),
+			BootstrapAddr: c.String("c"),
 			Folder:        c.String("f"),
 			Send:          c.String("S"),
 			Verbose:       c.Int("v"),
