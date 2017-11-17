@@ -8,6 +8,7 @@ import (
 )
 
 type BlockHeader struct {
+	Height     int64
 	Hash       []byte
 	PrecHash   []byte
 	MerkelHash []byte
@@ -24,9 +25,10 @@ type Block struct {
 func NewBlock(bc *Blockchain) *Block {
 	block := &Block{
 		Header: BlockHeader{
-			PrecHash:  bc.lastBlockHash,
-			Timestamp: time.Now().UnixNano(),
-			Target:    bc.target,
+			Height:    bc.lastBlock.Header.Height + 1,
+			PrecHash:  bc.lastBlock.Header.Hash,
+			Timestamp: time.Now().Unix(),
+			Target:    bc.lastTarget,
 			Hash:      []byte{},
 		},
 		Transactions: bc.pendingTransactions,
@@ -43,9 +45,16 @@ var originalBlock *Block
 
 func OriginBlock(bc *Blockchain) *Block {
 	if originalBlock == nil {
-		originalBlock = NewBlock(bc)
-
-		originalBlock.Header.Timestamp = time.Date(1990, time.January, 0, 0, 0, 0, 0, time.Local).Unix()
+		originalBlock = &Block{
+			Header: BlockHeader{
+				Height:    1,
+				PrecHash:  []byte{},
+				Timestamp: 0,
+				Target:    bc.lastTarget,
+				Hash:      []byte{},
+			},
+			Transactions: []Transaction{},
+		}
 
 		hash, _ := msgpack.Marshal(&originalBlock.Header)
 
@@ -61,6 +70,7 @@ func (this *Block) Mine(stats *Stats, mustStop *bool) {
 
 	for !*mustStop && compare(newHash, this.Header.Target) >= 0 {
 		this.Header.Nonce++
+		this.Header.Timestamp = time.Now().Unix()
 
 		var err error
 
@@ -81,6 +91,12 @@ func (this *Block) Mine(stats *Stats, mustStop *bool) {
 }
 
 func (this *Block) Verify(bc *Blockchain) bool {
+	if this.Header.Height != bc.lastBlock.Header.Height+1 {
+		bc.logger.Error("Block verify: Bad height")
+
+		return false
+	}
+
 	hash := this.Header.Hash
 	this.Header.Hash = []byte{}
 
@@ -95,8 +111,14 @@ func (this *Block) Verify(bc *Blockchain) bool {
 		return false
 	}
 
-	if compare(bc.lastBlockHash, this.Header.PrecHash) != 0 {
+	if compare(bc.lastBlock.Header.Hash, this.Header.PrecHash) != 0 {
 		bc.logger.Error("Block verify: Bad previous hash")
+
+		return false
+	}
+
+	if compare(bc.lastTarget, this.Header.Target) != 0 {
+		bc.logger.Error("Block verify: Bad target")
 
 		return false
 	}

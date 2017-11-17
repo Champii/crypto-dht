@@ -46,7 +46,7 @@
             icon: 'ti-server',
             title: 'Blocks height',
             value: '0',
-            footerText: 'Difficulty: 1',
+            footerText: 'Difficulty: 1, Next: 1. Last block: 0s',
             footerIcon: 'ti-dashboard'
           },
           {
@@ -60,9 +60,9 @@
           {
             type: 'warning',
             icon: 'ti-pulse',
-            title: 'DHT nodes',
+            title: 'Stored blocks',
             value: '0',
-            footerText: 'Synced',
+            footerText: 'Nodes: 0. Syncing...',
             footerIcon: 'ti-reload'
           }
         ]
@@ -79,14 +79,14 @@
           this.statsCards[0].footerText = wallets.length + ' wallets'
 
           this.statsCards[1].value = infos.blocksHeight
-          // this.statsCards[1].footerText = minerInfo.running ? 'Running' : 'Stopped'
+          this.statsCards[1].footerText = 'Difficulty: ' + infos.difficulty + ', Next: ' + infos.nextDifficulty + '. Last block: ' + infos.timeSinceLastBlock + 's'
 
           const minerInfo = infos.minerInfo
           this.statsCards[2].value = minerInfo.hashrate + ' h/s'
           this.statsCards[2].footerText = minerInfo.running ? 'Running' : 'Stopped'
 
-          this.statsCards[3].value = infos.nodesNb
-          this.statsCards[3].footerText = infos.synced ? 'Synced' : 'Syncing...'
+          this.statsCards[3].value = infos.storedKeys
+          this.statsCards[3].footerText = 'Nodes: ' + infos.nodesNb + '. ' + (infos.synced ? 'Synced' : 'Syncing...')
         })
       }, 1000)
     },

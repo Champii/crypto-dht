@@ -16,7 +16,13 @@ type Stats struct {
 }
 
 func (this *Stats) Update() {
-	hashPerSec := this.lastHashes / int(time.Now().Unix()-this.lastUpdate)
+	passed := int(time.Now().Unix() - this.lastUpdate)
+
+	if passed == 0 {
+		passed = 1
+	}
+
+	hashPerSec := this.lastHashes / passed
 
 	this.HashesPerSec = append(this.HashesPerSec, hashPerSec)
 
@@ -46,7 +52,7 @@ func (this *Blockchain) StatsLoop() {
 		goterm.Println("Mining:         ", this.options.Mine)
 		goterm.Println("")
 		goterm.Println("Funds:          ", this.GetAvailableFunds(this.wallets["main.key"].pub), "ctd")
-		goterm.Println("Blocks height:  ", this.blocksHeight)
+		goterm.Println("Blocks height:  ", this.BlocksHeight())
 		goterm.Println("Address:        ", SanitizePubKey(this.wallets["main.key"].pub))
 		goterm.Println("")
 

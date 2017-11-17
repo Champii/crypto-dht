@@ -65,20 +65,12 @@ COPYRIGHT:
 		},
 		cli.StringFlag{
 			Name:  "f, folder",
-			Usage: "Base Folder",
+			Usage: "Config Folder",
 			Value: os.Getenv("HOME") + "/.crypto-dht",
-		},
-		cli.BoolFlag{
-			Name:  "i",
-			Usage: "Interactif",
 		},
 		cli.BoolFlag{
 			Name:  "s",
 			Usage: "Stat mode",
-		},
-		cli.StringFlag{
-			Name:  "S, send",
-			Usage: "Send coins from main.key. Must be of the form 'amount:destAddress'",
 		},
 		cli.BoolFlag{
 			Name:  "m",
@@ -91,6 +83,10 @@ COPYRIGHT:
 		cli.BoolFlag{
 			Name:  "g",
 			Usage: "Deactivate GUI",
+		},
+		cli.StringFlag{
+			Name:  "S, send",
+			Usage: "Send coins from main.key. Must be of the form 'amount:destAddress'",
 		},
 		cli.IntFlag{
 			Name:  "n, network",
@@ -121,15 +117,28 @@ func manageArgs() {
 			Verbose:       c.Int("v"),
 			Stats:         c.Bool("s"),
 			Wallets:       c.Bool("w"),
-			Interactif:    c.Bool("i"),
 			NoGui:         c.Bool("g"),
 			Mine:          c.Bool("m"),
 		}
 
 		if c.Int("n") > 0 {
+			options.Send = ""
+			options.Stats = false
+			options.NoGui = true
+			options.Wallets = false
+
 			cluster(c.Int("n"), options)
 
 			return nil
+		}
+
+		if options.Stats || len(options.Send) > 0 {
+			options.NoGui = true
+			options.Wallets = false
+		}
+
+		if len(options.Send) > 0 {
+			options.Stats = false
 		}
 
 		client := blockchain.New(options)
@@ -169,11 +178,15 @@ type MinerInfo struct {
 }
 
 type BaseInfo struct {
-	MinerInfo    MinerInfo      `json:"minerInfo"`
-	Wallets      []WalletClient `json:"wallets"`
-	NodesNb      int            `json:"nodesNb"`
-	Synced       bool           `json:"synced"`
-	BlocksHeight int            `json:"blocksHeight"`
+	MinerInfo          MinerInfo      `json:"minerInfo"`
+	Wallets            []WalletClient `json:"wallets"`
+	NodesNb            int            `json:"nodesNb"`
+	Synced             bool           `json:"synced"`
+	BlocksHeight       int64          `json:"blocksHeight"`
+	Difficulty         int64          `json:"difficulty"`
+	NextDifficulty     int64          `json:"nextDifficulty"`
+	TimeSinceLastBlock int64          `json:"timeSinceLastBlock"`
+	StoredKeys         int            `json:"storedKeys"`
 }
 
 type WalletClient struct {
@@ -202,10 +215,14 @@ func GetBaseInfos() BaseInfo {
 	}
 
 	return BaseInfo{
-		Wallets:      walletsRes,
-		NodesNb:      bc.GetConnectedNodesNb(),
-		Synced:       bc.Synced(),
-		BlocksHeight: bc.BlocksHeight(),
+		Wallets:            walletsRes,
+		NodesNb:            bc.GetConnectedNodesNb(),
+		Synced:             bc.Synced(),
+		BlocksHeight:       bc.BlocksHeight(),
+		Difficulty:         bc.Difficulty(),
+		NextDifficulty:     bc.NextDifficulty(),
+		StoredKeys:         bc.StoredKeys(),
+		TimeSinceLastBlock: bc.TimeSinceLastBlock(),
 		MinerInfo: MinerInfo{
 			Hashrate: hashRate,
 			Running:  bc.Running(),
@@ -234,7 +251,7 @@ func gui(bc_ *blockchain.Blockchain) {
 			app = a
 			bc = bc_
 
-			w.OpenDevTools()
+			// w.OpenDevTools()
 			// w.On(astilectron.EventNameWindowEventMessage, func(e astilectron.Event) (deleteListener bool) {
 			// 	var m string
 			// 	e.Message.Unmarshal(&m)

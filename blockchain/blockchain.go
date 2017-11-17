@@ -3,6 +3,7 @@ package blockchain
 import (
 	"encoding/hex"
 	"errors"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +20,8 @@ const (
 	COMMAND_CUSTOM_NEW_BLOCK
 )
 
+var EXPECTED_10_BLOCKS_TIME int64 = 600
+
 type UnspentTxOut struct {
 	out    TxOut
 	txHash []byte
@@ -26,20 +29,21 @@ type UnspentTxOut struct {
 }
 
 type Blockchain struct {
-	status              int
-	client              *dht.Dht
-	logger              *logging.Logger
-	options             BlockchainOptions
-	target              []byte
-	wallets             map[string]*Wallet
-	unspentTxOut        map[string][]*UnspentTxOut
-	pendingTransactions []Transaction
-	lastBlockHash       []byte
-	blocksHeight        int
-	synced              bool
-	mustStop            bool
-	stats               *Stats
-	running             bool
+	status                 int
+	client                 *dht.Dht
+	logger                 *logging.Logger
+	options                BlockchainOptions
+	lastBlockTargetChanged *Block
+	lastBlock              *Block
+	baseTarget             []byte
+	lastTarget             []byte
+	wallets                map[string]*Wallet
+	unspentTxOut           map[string][]*UnspentTxOut
+	pendingTransactions    []Transaction
+	synced                 bool
+	mustStop               bool
+	stats                  *Stats
+	running                bool
 }
 
 type BlockchainOptions struct {
@@ -56,7 +60,7 @@ type BlockchainOptions struct {
 }
 
 func New(options BlockchainOptions) *Blockchain {
-	target, _ := hex.DecodeString("000009FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+	target, _ := hex.DecodeString("000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
 	if options.Stats {
 		options.Verbose = 2
@@ -65,10 +69,10 @@ func New(options BlockchainOptions) *Blockchain {
 	bc := &Blockchain{
 		status:              0,
 		options:             options,
-		target:              target,
+		baseTarget:          target,
+		lastTarget:          target,
 		wallets:             make(map[string]*Wallet),
 		unspentTxOut:        make(map[string][]*UnspentTxOut),
-		blocksHeight:        1,
 		mustStop:            false,
 		stats:               &Stats{},
 		pendingTransactions: []Transaction{},
@@ -84,6 +88,17 @@ func (this *Blockchain) Init() {
 		ListenAddr:    this.options.ListenAddr,
 		BootstrapAddr: this.options.BootstrapAddr,
 		Verbose:       this.options.Verbose,
+		OnStore: func(cmd dht.Packet) bool {
+			data := cmd.Data.(dht.StoreInst).Data
+			switch data.(type) {
+			case Block:
+				block := data.(Block)
+				return this.AddBlock(&block)
+			default:
+				return false
+			}
+		},
+
 		OnCustomCmd: func(cmd dht.Packet) interface{} {
 			return this.Dispatch(cmd)
 		},
@@ -108,7 +123,8 @@ func (this *Blockchain) Init() {
 
 	OriginBlock(this)
 
-	this.lastBlockHash = originalBlock.Header.Hash
+	this.lastBlockTargetChanged = originalBlock
+	this.lastBlock = originalBlock
 }
 
 func (this *Blockchain) Start() error {
@@ -212,15 +228,15 @@ func (this *Blockchain) Dispatch(cmd dht.Packet) interface{} {
 		this.mustStop = true
 
 	case COMMAND_CUSTOM_NEW_BLOCK:
-		var block Block
+		// var block Block
 
-		msgpack.Unmarshal(cmd.Data.(dht.CustomCmd).Data.([]uint8), &block)
+		// msgpack.Unmarshal(cmd.Data.(dht.CustomCmd).Data.([]uint8), &block)
 
-		if !this.AddBlock(&block) {
-			return nil
-		}
+		// if !this.AddBlock(&block) {
+		// 	return nil
+		// }
 
-		this.mustStop = true
+		// this.mustStop = true
 	}
 
 	return nil
@@ -234,7 +250,7 @@ func (this *Blockchain) Sync() {
 	var lastErr error
 
 	for lastErr == nil {
-		block_, err := this.client.Fetch(NewHash(this.lastBlockHash))
+		block_, err := this.client.Fetch(NewHash(this.lastBlock.Header.Hash))
 
 		lastErr = err
 		if err == nil {
@@ -249,7 +265,33 @@ func (this *Blockchain) Sync() {
 			}
 		}
 	}
+
 	this.synced = true
+
+	go func() {
+		for {
+			block_, err := this.client.Fetch(NewHash(this.lastBlock.Header.Hash))
+
+			if err != nil {
+				time.Sleep(time.Second * 5)
+				continue
+			}
+
+			var block Block
+
+			msgpack.Unmarshal(block_.([]uint8), &block)
+
+			if !this.AddBlock(&block) {
+				this.logger.Warning("Sync: Received bad block")
+
+				return
+			}
+
+			this.mustStop = true
+
+			time.Sleep(time.Second * 5)
+		}
+	}()
 }
 
 func (this *Blockchain) AddBlock(block *Block) bool {
@@ -259,14 +301,58 @@ func (this *Blockchain) AddBlock(block *Block) bool {
 		return false
 	}
 
-	this.lastBlockHash = block.Header.Hash
+	if compare(block.Header.PrecHash, originalBlock.Header.Hash) == 0 {
+		this.lastBlockTargetChanged = block
+	}
 
-	this.blocksHeight++
+	this.lastBlock = block
 
 	this.UpdateUnspentTxOuts(block)
 	this.RemovePendingTransaction(block.Transactions)
 
+	if block.Header.Height%10 == 0 {
+		this.adjustDifficulty(block)
+	}
+
 	return true
+}
+
+func (this *Blockchain) adjustDifficulty(block *Block) {
+	base := big.NewInt(0)
+	actual := big.NewInt(0)
+	base.SetString(hex.EncodeToString(this.baseTarget), 16)
+	actual.SetString(hex.EncodeToString(block.Header.Target), 16)
+
+	oldDiff := big.NewInt(0)
+	oldDiff = oldDiff.Quo(base, actual)
+
+	timePassed := block.Header.Timestamp - this.lastBlockTargetChanged.Header.Timestamp
+
+	newDiff := big.NewInt(0)
+	newDiff = newDiff.Mul(oldDiff, big.NewInt(EXPECTED_10_BLOCKS_TIME/timePassed))
+
+	test := big.NewInt(0)
+	if newDiff.Int64() > test.Mul(oldDiff, big.NewInt(4)).Int64() {
+		newDiff = test
+	}
+
+	test = big.NewInt(0)
+	if newDiff.Int64() < test.Quo(oldDiff, big.NewInt(4)).Int64() {
+		newDiff = test
+	}
+
+	if newDiff.Int64() < 1 {
+		newDiff = big.NewInt(1)
+	}
+
+	test = big.NewInt(0)
+	this.lastTarget = test.Quo(base, newDiff).Bytes()
+
+	for len(this.lastTarget) < len(this.baseTarget) {
+		this.lastTarget = append([]byte{0}, this.lastTarget...)
+	}
+
+	this.lastBlockTargetChanged = block
 }
 
 func (this *Blockchain) Mine() {
@@ -294,26 +380,20 @@ func (this *Blockchain) Mine() {
 				return
 			}
 
-			lastBlockHash := NewHash(this.lastBlockHash)
-
-			if !this.AddBlock(block) {
-				this.logger.Error("OWN MINED BLOCK IS DEFEICTIVE !", hex.EncodeToString(block.Header.Hash))
-
-				continue
-			}
-
 			this.logger.Info("Found block !", hex.EncodeToString(block.Header.Hash))
-
-			this.stats.foundBlocks++
 
 			serie, _ := msgpack.Marshal(&block)
 
-			this.client.StoreAt(lastBlockHash, serie)
+			_, nb, err := this.client.StoreAt(NewHash(this.lastBlock.Header.Hash), serie)
 
-			this.client.Broadcast(dht.CustomCmd{
-				Command: COMMAND_CUSTOM_NEW_BLOCK,
-				Data:    serie,
-			})
+			if err != nil || nb == 0 {
+				this.logger.Warning("ERROR STORING BLOCK IN THE DHT !", hex.EncodeToString(block.Header.Hash))
+
+				continue
+
+			}
+
+			this.stats.foundBlocks++
 		}
 	}()
 }
@@ -338,6 +418,70 @@ func (this *Blockchain) GetConnectedNodesNb() int {
 	return this.client.GetConnectedNumber()
 }
 
-func (this *Blockchain) BlocksHeight() int {
-	return this.blocksHeight
+func (this *Blockchain) BlocksHeight() int64 {
+	return this.lastBlock.Header.Height
+}
+
+func (this *Blockchain) TimeSinceLastBlock() int64 {
+	return time.Now().Unix() - this.lastBlock.Header.Timestamp
+}
+
+func (this *Blockchain) StoredKeys() int {
+	return this.client.StoredKeys()
+}
+
+func (this *Blockchain) Difficulty() int64 {
+	base := big.NewInt(0)
+	actual := big.NewInt(0)
+	base.SetString(hex.EncodeToString(this.baseTarget), 16)
+	actual.SetString(hex.EncodeToString(this.lastTarget), 16)
+
+	return base.Quo(base, actual).Int64()
+}
+
+func (this *Blockchain) NextDifficulty() int64 {
+	base := big.NewInt(0)
+	actual := big.NewInt(0)
+	base.SetString(hex.EncodeToString(this.baseTarget), 16)
+	actual.SetString(hex.EncodeToString(this.lastTarget), 16)
+
+	oldDiff := big.NewInt(0)
+	oldDiff = oldDiff.Quo(base, actual)
+
+	timePassed := (time.Now().Unix() - this.lastBlockTargetChanged.Header.Timestamp)
+
+	if timePassed == 0 {
+		return oldDiff.Int64()
+	}
+
+	nbBlocks := this.lastBlock.Header.Height - this.lastBlockTargetChanged.Header.Height + 1
+
+	if nbBlocks == 0 {
+		nbBlocks = 1
+	}
+
+	timePassed = (timePassed / nbBlocks) * 10
+
+	if timePassed == 0 {
+		timePassed = 1
+	}
+
+	newDiff := big.NewInt(0)
+	newDiff = newDiff.Mul(oldDiff, big.NewInt((EXPECTED_10_BLOCKS_TIME / timePassed)))
+
+	test := big.NewInt(0)
+	if newDiff.Int64() > test.Mul(oldDiff, big.NewInt(4)).Int64() {
+		newDiff = test
+	}
+
+	test = big.NewInt(0)
+	if newDiff.Int64() < test.Quo(oldDiff, big.NewInt(4)).Int64() {
+		newDiff = test
+	}
+
+	if newDiff.Int64() < 1 {
+		newDiff = big.NewInt(1)
+	}
+
+	return newDiff.Int64()
 }
