@@ -169,10 +169,11 @@ type MinerInfo struct {
 }
 
 type BaseInfo struct {
-	MinerInfo MinerInfo      `json:"minerInfo"`
-	Wallets   []WalletClient `json:"wallets"`
-	NodesNb   int            `json:"nodesNb"`
-	Synced    bool           `json:"synced"`
+	MinerInfo    MinerInfo      `json:"minerInfo"`
+	Wallets      []WalletClient `json:"wallets"`
+	NodesNb      int            `json:"nodesNb"`
+	Synced       bool           `json:"synced"`
+	BlocksHeight int            `json:"blocksHeight"`
 }
 
 type WalletClient struct {
@@ -192,12 +193,21 @@ func GetBaseInfos() BaseInfo {
 		})
 	}
 
+	stats := bc.Stats()
+
+	hashRate := 0
+
+	if len(stats.HashesPerSec) > 0 {
+		hashRate = stats.HashesPerSec[len(stats.HashesPerSec)-1]
+	}
+
 	return BaseInfo{
-		Wallets: walletsRes,
-		NodesNb: bc.GetConnectedNodesNb(),
-		Synced:  bc.Synced(),
+		Wallets:      walletsRes,
+		NodesNb:      bc.GetConnectedNodesNb(),
+		Synced:       bc.Synced(),
+		BlocksHeight: bc.BlocksHeight(),
 		MinerInfo: MinerInfo{
-			Hashrate: bc.Stats().HashesPerSecAvg,
+			Hashrate: hashRate,
 			Running:  bc.Running(),
 		},
 	}
@@ -241,7 +251,7 @@ func gui(bc_ *blockchain.Blockchain) {
 		WindowOptions: &astilectron.WindowOptions{
 			BackgroundColor: astilectron.PtrStr("#333"),
 			Center:          astilectron.PtrBool(true),
-			Height:          astilectron.PtrInt(450),
+			Height:          astilectron.PtrInt(435),
 			Width:           astilectron.PtrInt(1000),
 			Resizable:       astilectron.PtrBool(false),
 			Frame:           astilectron.PtrBool(false),

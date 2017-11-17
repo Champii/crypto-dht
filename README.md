@@ -46,6 +46,7 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 
 ## Todo
 
+- Deactivate GUI for some commands (-n, -s, -S, -i)
 - Store unspentTxOut and blockHeigh on disk to avoid resync all the chain each time
 - DHT's OnStore to avoid saving bad blocks
 - Merkel tree
@@ -54,3 +55,5 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 - Transactions history for a wallet
 - Manage wallets
 - Recheck blockchain
+- Config file
+- Daemon ?

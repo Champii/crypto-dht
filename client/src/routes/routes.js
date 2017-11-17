@@ -3,7 +3,7 @@ import DashboardLayout from '../components/Dashboard/Layout/DashboardLayout.vue'
 import NotFound from '../components/GeneralViews/NotFoundPage.vue'
 
 // Admin pages
-import Overview from 'src/components/Dashboard/Views/Overview.vue'
+import Dashboard from 'src/components/Dashboard/Views/Dashboard.vue'
 import UserProfile from 'src/components/Dashboard/Views/UserProfile.vue'
 import Notifications from 'src/components/Dashboard/Views/Notifications.vue'
 import Icons from 'src/components/Dashboard/Views/Icons.vue'
@@ -29,7 +29,7 @@ const routes = [
       {
         path: 'dashboard',
         name: 'dashboard',
-        component: Overview
+        component: Dashboard
       },
       {
         path: 'wallets',

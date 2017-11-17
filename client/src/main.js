@@ -47,17 +47,17 @@ Object.defineProperty(Vue.prototype, '$Chartist', {
 //   }
 // })
 
-// if (window.astilectron == null) {
-//   /* eslint-disable no-new */
-//   new Vue({
-//     el: '#app',
-//     render: h => h(App),
-//     router,
-//     data: {
-//       Chartist: Chartist
-//     }
-//   })
-// }
+if (window.astilectron == null) {
+  /* eslint-disable no-new */
+  new Vue({
+    el: '#app',
+    render: h => h(App),
+    router,
+    data: {
+      Chartist: Chartist
+    }
+  })
+}
 
 var index = {
   init: function () {

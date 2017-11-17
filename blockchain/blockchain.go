@@ -234,7 +234,7 @@ func (this *Blockchain) Sync() {
 	var lastErr error
 
 	for lastErr == nil {
-		block_, err := this.client.Fetch(hex.EncodeToString(NewHash(this.lastBlockHash)))
+		block_, err := this.client.Fetch(NewHash(this.lastBlockHash))
 
 		lastErr = err
 		if err == nil {
@@ -259,12 +259,12 @@ func (this *Blockchain) AddBlock(block *Block) bool {
 		return false
 	}
 
+	this.lastBlockHash = block.Header.Hash
+
 	this.blocksHeight++
 
 	this.UpdateUnspentTxOuts(block)
 	this.RemovePendingTransaction(block.Transactions)
-
-	this.lastBlockHash = block.Header.Hash
 
 	return true
 }
@@ -294,7 +294,7 @@ func (this *Blockchain) Mine() {
 				return
 			}
 
-			lastBlockHash := hex.EncodeToString(NewHash(this.lastBlockHash))
+			lastBlockHash := NewHash(this.lastBlockHash)
 
 			if !this.AddBlock(block) {
 				this.logger.Error("OWN MINED BLOCK IS DEFEICTIVE !", hex.EncodeToString(block.Header.Hash))
@@ -335,6 +335,9 @@ func (this *Blockchain) Stats() *Stats {
 }
 
 func (this *Blockchain) GetConnectedNodesNb() int {
-	// return this.client.
-	return 0
+	return this.client.GetConnectedNumber()
+}
+
+func (this *Blockchain) BlocksHeight() int {
+	return this.blocksHeight
 }

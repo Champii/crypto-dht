@@ -27,12 +27,12 @@ const SidebarStore = {
       name: 'DHT Infos',
       icon: 'ti-pulse',
       path: '/admin/dht'
+    },
+    {
+      name: 'Debug',
+      icon: 'ti-support',
+      path: '/admin/debug'
     }
-    // {
-    //   name: 'Maps',
-    //   icon: 'ti-map',
-    //   path: '/admin/maps'
-    // },
     // {
     //   name: 'Notifications',
     //   icon: 'ti-bell',

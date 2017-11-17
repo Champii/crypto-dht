@@ -36,18 +36,18 @@
           {
             type: 'success',
             icon: 'ti-money',
-            title: 'Available',
-            value: '',
+            title: 'Money',
+            value: '0',
             footerText: '',
             footerIcon: 'ti-wallet'
           },
           {
             type: 'info',
-            icon: 'ti-book',
-            title: 'Transactions',
+            icon: 'ti-server',
+            title: 'Blocks height',
             value: '0',
-            footerText: '0 Waiting',
-            footerIcon: 'ti-alarm-clock'
+            footerText: 'Difficulty: 1',
+            footerIcon: 'ti-dashboard'
           },
           {
             type: 'danger',
@@ -61,35 +61,38 @@
             type: 'warning',
             icon: 'ti-pulse',
             title: 'DHT nodes',
-            value: '1',
+            value: '0',
             footerText: 'Synced',
             footerIcon: 'ti-reload'
           }
         ]
       }
-    },
-    created () {
-      this.timer = setInterval(() => {
-        astilectron.send({name: 'getInfos'}, (response) => {
-          console.log(response)
-          const infos = response.payload
-
-          const wallets = infos.wallets
-          this.statsCards[0].value = wallets.reduce((memo, item) => memo + item.amount, 0) + ' ctd'
-          this.statsCards[0].footerText = wallets.length + ' wallets'
-
-          const minerInfo = infos.minerInfo
-          this.statsCards[2].value = minerInfo.hashrate + ' h/s'
-          this.statsCards[2].footerText = minerInfo.running ? 'Running' : 'Stopped'
-
-          this.statsCards[3].value = infos.nodesNb
-          this.statsCards[3].footerText = infos.synced ? 'Synced' : 'Syncing...'
-        })
-      }, 1000)
-    },
-    destroyed () {
-      this.timer.stop()
     }
+    // created () {
+    //   this.timer = setInterval(() => {
+    //     astilectron.send({name: 'getInfos'}, (response) => {
+    //       console.log(response)
+    //       const infos = response.payload
+
+    //       const wallets = infos.wallets
+    //       this.statsCards[0].value = wallets.reduce((memo, item) => memo + item.amount, 0) + ''
+    //       this.statsCards[0].footerText = wallets.length + ' wallets'
+
+    //       this.statsCards[1].value = infos.blocksHeight
+    //       // this.statsCards[1].footerText = minerInfo.running ? 'Running' : 'Stopped'
+
+    //       const minerInfo = infos.minerInfo
+    //       this.statsCards[2].value = minerInfo.hashrate + ' h/s'
+    //       this.statsCards[2].footerText = minerInfo.running ? 'Running' : 'Stopped'
+
+    //       this.statsCards[3].value = infos.nodesNb
+    //       this.statsCards[3].footerText = infos.synced ? 'Synced' : 'Syncing...'
+    //     })
+    //   }, 1000)
+    // },
+    // destroyed () {
+    //   this.timer.stop()
+    // }
   }
 
 </script>

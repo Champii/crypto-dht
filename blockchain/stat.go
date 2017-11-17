@@ -11,26 +11,26 @@ type Stats struct {
 	lastUpdate      int64
 	lastHashes      int
 	HashesPerSecAvg int
-	hashesPerSec    []int
+	HashesPerSec    []int
 	foundBlocks     int
 }
 
 func (this *Stats) Update() {
 	hashPerSec := this.lastHashes / int(time.Now().Unix()-this.lastUpdate)
 
-	this.hashesPerSec = append(this.hashesPerSec, hashPerSec)
+	this.HashesPerSec = append(this.HashesPerSec, hashPerSec)
 
-	if len(this.hashesPerSec) > 3600 {
-		this.hashesPerSec = this.hashesPerSec[1:]
+	if len(this.HashesPerSec) > 3600 {
+		this.HashesPerSec = this.HashesPerSec[1:]
 	}
 
 	this.HashesPerSecAvg = 0
 
-	for _, v := range this.hashesPerSec {
+	for _, v := range this.HashesPerSec {
 		this.HashesPerSecAvg += v
 	}
 
-	this.HashesPerSecAvg /= len(this.hashesPerSec)
+	this.HashesPerSecAvg /= len(this.HashesPerSec)
 	this.lastUpdate = time.Now().Unix()
 	this.lastHashes = 0
 }
@@ -53,8 +53,8 @@ func (this *Blockchain) StatsLoop() {
 		if this.options.Mine {
 			goterm.Println("Miner stats:")
 
-			if len(this.stats.hashesPerSec) > 0 {
-				goterm.Println("Hash/s:       ", this.stats.hashesPerSec[len(this.stats.hashesPerSec)-1])
+			if len(this.stats.HashesPerSec) > 0 {
+				goterm.Println("Hash/s:       ", this.stats.HashesPerSec[len(this.stats.HashesPerSec)-1])
 			}
 			goterm.Println("Hash/s avg:   ", this.stats.HashesPerSecAvg)
 			goterm.Println("Found blocks: ", this.stats.foundBlocks)
