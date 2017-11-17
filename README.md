@@ -3,9 +3,12 @@ Experimental Blockchain over DHT
 
 ## Info
 
-Based on my own DHT implementation in GO
+Based on my own DHT implementation in GO: [go-dht](https://github.com/champii/go-dht)
 
 ![Screenshot](https://github.com/champii/crypto-dht/raw/master/screenshot.png "Screenshot")
+
+- One block every minute
+- DHT for block storage.
 
 ## Usage
 

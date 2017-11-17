@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"encoding/json"
 	"time"
 
 	astilectron "github.com/asticode/go-astilectron"
@@ -235,6 +236,11 @@ func handleMessages(w *astilectron.Window, m bootstrap.MessageIn) (payload inter
 	switch m.Name {
 	case "getInfos":
 		payload = GetBaseInfos()
+	case "send":
+		var r string
+		json.Unmarshal(m.Payload, &r)
+		// bc.Logger().Warning("SEND", r)
+		payload = bc.SendTo(r)
 	}
 	return
 }

@@ -151,7 +151,7 @@ func (this *Blockchain) Start() error {
 		}
 
 		if len(this.options.Send) > 0 {
-			if err := this.SendTo(); err != nil {
+			if err := this.SendTo(this.options.Send); err != nil {
 				this.logger.Error("Unable to Send", err)
 
 				return
@@ -169,8 +169,8 @@ func (this *Blockchain) Start() error {
 	return nil
 }
 
-func (this *Blockchain) SendTo() error {
-	splited := strings.Split(this.options.Send, ":")
+func (this *Blockchain) SendTo(value string) error {
+	splited := strings.Split(value, ":")
 
 	if len(splited) != 2 {
 		return errors.New("Bad send format")

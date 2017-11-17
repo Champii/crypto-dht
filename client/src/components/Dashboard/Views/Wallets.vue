@@ -1,32 +1,13 @@
 <template>
   <div class="row">
-    <div class="col-lg-5 col-md-12">
-      <div class="col-lg-5 col-sm-12">
-        <wallet>
-          <div class="" slot="name">
-            Name
-          </div>
-          <div class="" slot="amount">
-            Amount
-          </div>
-          <div class="" slot="address">
-            Address
-          </div>
-        </wallet>
+    <div class="col-lg-12">
+      <div class="col-lg-12">
+        <select v-model="selected">
+          <option v-for="wallet in wallets" v-bind:value="wallet">{{wallet.name}}</option>
+        </select>
       </div>
-      <div class="col-lg-5 col-sm-12" v-for="wallet in wallets">
-        <wallet>
-          <div class="" slot="name">
-            {{wallet.name}}
-          </div>
-          <div class="" slot="amount">
-            {{wallet.amount}}
-          </div>
-          <div class="" slot="address">
-            {{wallet.address}}
-          </div>
-        </wallet>
-      </div>
+      <wallet :item="selected">
+      </wallet>
     </div>
   </div>
 </template>
@@ -39,24 +20,19 @@
     },
     data () {
       return {
-        wallets: [
-          {
-            name: 'main.key',
-            address: '1',
-            amount: '0'
-          }
-        ]
+        selected: '',
+        wallets: []
       }
     },
     created () {
       astilectron.send({name: 'getInfos'}, (response) => {
         const infos = response.payload
-
         this.wallets = infos.wallets
+        this.selected = this.wallets[0]
       })
     },
     destroyed () {
-      this.timer.stop()
+      // this.timer.stop()
     }
 
   }
