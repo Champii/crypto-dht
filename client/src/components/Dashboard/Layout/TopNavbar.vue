@@ -11,8 +11,7 @@
         <a class="navbar-brand">{{routeName}}</a>
       </div>
       <div class="navbar-right-menu">
-        <ul class="nav navbar-nav navbar-right">
-        <ul class="nav navbar-nav">
+        <!-- <ul class="nav navbar-nav">
           <li class="open">
             <a href="#" class="dropdown-toggle btn-magnify" data-toggle="dropdown">
               <i class="ti-money"></i>
@@ -31,7 +30,7 @@
               <p>Mining...</p>
             </a>
           </li>
-          <!-- <li class="open">
+           <li class="open">
             <a href="#" class="dropdown-toggle btn-magnify" data-toggle="dropdown">
             <label class="switch">
               <input type="checkbox">
@@ -39,7 +38,8 @@
             </label>
             </a>
           </li> -->
-        </ul>
+        <!-- </ul>  -->
+        <ul class="nav navbar-nav navbar-right">
              <drop-down title="0 Notifications" icon="ti-bell">
                <!-- <li><a href="#">Notification 1</a></li>
                <li><a href="#">Notification 2</a></li>
