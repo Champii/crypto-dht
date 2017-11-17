@@ -234,7 +234,7 @@ func gui(bc_ *blockchain.Blockchain) {
 			app = a
 			bc = bc_
 
-			// w.OpenDevTools()
+			w.OpenDevTools()
 			// w.On(astilectron.EventNameWindowEventMessage, func(e astilectron.Event) (deleteListener bool) {
 			// 	var m string
 			// 	e.Message.Unmarshal(&m)
@@ -252,7 +252,7 @@ func gui(bc_ *blockchain.Blockchain) {
 			BackgroundColor: astilectron.PtrStr("#333"),
 			Center:          astilectron.PtrBool(true),
 			Height:          astilectron.PtrInt(435),
-			Width:           astilectron.PtrInt(1000),
+			Width:           astilectron.PtrInt(1050),
 			Resizable:       astilectron.PtrBool(false),
 			Frame:           astilectron.PtrBool(false),
 			HasShadow:       astilectron.PtrBool(true),
