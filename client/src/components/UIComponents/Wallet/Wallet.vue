@@ -35,6 +35,9 @@
             <span class="col-lg-4">
               <button v-on:click="send">Send !</button>
             </span>
+            <span class="col-lg-4" v-if="response.length > 0">
+              Response: {{response}}
+            </span>
           </div>
         </div>
       </div>
@@ -48,7 +51,8 @@
     data () {
       return {
         amount: 0,
-        destination: ''
+        destination: '',
+        response: ''
       }
     },
     methods: {
@@ -58,12 +62,19 @@
         document.execCommand('copy')
       },
       send: function () {
-        const amount = Number(this.amount) * 100
+        const amount = parseInt(Number(this.amount) * 100, 10)
         const dest = this.destination
         this.amount = 0
         this.destination = ''
         astilectron.send({name: 'send', payload: amount + ':' + dest}, (response) => {
           console.log('SENT', response)
+          this.response = response.payload
+          if (this.response === '') {
+            this.response = 'OK'
+          }
+          const timer = setTimeout(() => {
+            this.response = ''
+          }, 7000)
         })
       }
     }

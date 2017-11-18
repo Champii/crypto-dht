@@ -24,9 +24,10 @@ const (
 var EXPECTED_10_BLOCKS_TIME int64 = 600
 
 type UnspentTxOut struct {
-	out    TxOut
-	txHash []byte
-	inIdx  int
+	out        TxOut
+	txHash     []byte
+	inIdx      int
+	isTargeted bool
 }
 
 type HistoryTx struct {
@@ -151,6 +152,10 @@ func (this *Blockchain) Init() {
 	this.miningBlock = originalBlock
 }
 
+func (this *Blockchain) Stop()  {
+	this.client.Stop()
+}
+
 func (this *Blockchain) Start() error {
 	if err := this.client.Start(); err != nil {
 		return err
@@ -210,15 +215,9 @@ func (this *Blockchain) SendTo(value string) error {
 
 	tx := NewTransaction(amount, pub, this)
 
-	if tx == nil || !tx.Verify(this) || this.hasPending(tx) {
+	if tx == nil || !this.AddTransationToWaiting(tx) {
 		return errors.New("Unable to create the transaction")
 	}
-
-	if HasDoubleSpend(append(this.pendingTransactions, *tx)) {
-		return errors.New("Created a double spending transaction !")
-	}
-
-	this.pendingTransactions = append(this.pendingTransactions, *tx)
 
 	this.mustStop = true
 
@@ -240,7 +239,6 @@ func (this *Blockchain) Logger() *logging.Logger {
 	return this.logger
 }
 
-
 func (this *Blockchain) hasPending(tx *Transaction) bool {
 	for _, t := range this.pendingTransactions {
 		if compare(t.GetHash(), tx.GetHash()) == 0 {
@@ -258,15 +256,9 @@ func (this *Blockchain) Dispatch(cmd dht.Packet) interface{} {
 
 		msgpack.Unmarshal(cmd.Data.(dht.CustomCmd).Data.([]uint8), &tx)
 
-		if !tx.Verify(this) || this.hasPending(&tx){
+		if !this.AddTransationToWaiting(&tx) {
 			return nil
 		}
-
-		if HasDoubleSpend(append(this.pendingTransactions, tx)) {
-			return nil
-		}
-
-		this.pendingTransactions = append(this.pendingTransactions, tx)
 
 		// this.mustStop = true
 

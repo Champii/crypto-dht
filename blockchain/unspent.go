@@ -109,6 +109,10 @@ func (this *Blockchain) GetEnoughOwnUnspentOut(value int) []*UnspentTxOut {
 
 	total := 0
 	for _, unspent := range this.unspentTxOut[walletStr] {
+		if unspent.isTargeted {
+			continue
+		}
+
 		total += unspent.out.Value
 
 		res = append(res, unspent)

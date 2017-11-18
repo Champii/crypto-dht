@@ -127,6 +127,8 @@ func NewTransaction(value int, dest []byte, bc *Blockchain) *Transaction {
 	insRes, outRes := bc.GetInOutFromUnspent(value, dest, outs)
 
 	if len(outs) == 0 {
+		bc.logger.Warning("Cannot create transaction: no outs")
+
 		return nil
 	}
 
@@ -143,6 +145,8 @@ func NewTransaction(value int, dest []byte, bc *Blockchain) *Transaction {
 	r, s, err := ecdsa.Sign(rand.Reader, bc.wallets["main.key"].key, hash)
 
 	if err != nil {
+		bc.logger.Warning("Cannot create transaction: Signature error", err)
+
 		return nil
 	}
 
@@ -195,4 +199,44 @@ func (this *Blockchain) RemovePendingTransaction(insTx []Transaction) {
 			this.pendingTransactions = append(this.pendingTransactions[:idx], this.pendingTransactions[idx+1:]...)
 		}
 	}
+}
+
+func (this *Blockchain) AddTransationToWaiting(tx *Transaction) bool {
+	if !tx.Verify(this) || this.hasPending(tx){
+		this.logger.Warning("Cannot add transaction to waiting")
+
+		return false
+	}
+
+	if HasDoubleSpend(append(this.pendingTransactions, *tx)) {
+		this.logger.Warning("Cannot add transaction to waiting: Has double spend")
+
+		return false
+	}
+
+	outs := []*UnspentTxOut{}
+	for _, in := range tx.Ins {
+		out := this.getCorrespondingOutTx(tx.Stamp.Pub, &in)
+		outs = append(outs, out)
+
+		if out == nil {
+			this.logger.Warning("Cannot find corresponding out")
+
+			return false
+		}
+
+		if out.isTargeted {
+			this.logger.Warning("Got transaction with double spending")
+
+			return false
+		}
+	}
+
+	for _, out := range outs {
+		out.isTargeted = true
+	}
+
+	this.pendingTransactions = append(this.pendingTransactions, *tx)
+
+	return true
 }

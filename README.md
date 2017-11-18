@@ -5,11 +5,12 @@ Experimental Blockchain over DHT
 
 Based on my own DHT implementation in GO: [go-dht](https://github.com/champii/go-dht)
 
+- One block every minute
+- DHT for block storage.
+
 ![Screenshot](https://github.com/champii/crypto-dht/raw/master/screenshot.png "Screenshot")
 ![Screenshot2](https://github.com/champii/crypto-dht/raw/master/screenshot2.png "Screenshot2")
 
-- One block every minute
-- DHT for block storage.
 
 ## Usage
 
@@ -49,12 +50,12 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 
 ## Todo
 
+- Get pending transactions from other nodes
 - Fees
 - Scrypt
 - Store unspentTxOut and blockHeigh on disk to avoid resync all the chain each time
 - Merkel tree
 - Better GUI
-- Transactions history for a wallet
 - Manage wallets
 - Recheck blockchain
 - Config file

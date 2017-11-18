@@ -3,14 +3,6 @@
     <div class="row">
       <div class="col-md-12">
         <div class="card">
-          <paper-table :title="table.tableName" :sub-title="table.subTitle" :data="table.waitingTx" :columns="table.columns">
-          </paper-table>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12">
-        <div class="card">
           <paper-table :title="table.tableName2" :sub-title="table.subTitle" :data="table.history" :columns="table.columns">
           </paper-table>
         </div>
@@ -32,8 +24,7 @@
           tableName2: 'History tx',
           subTitle: '',
           columns: ['Amount', 'Timestamp', 'Address'],
-          history: [],
-          waitingTx: []
+          history: []
         }
       }
     },
@@ -42,17 +33,17 @@
         astilectron.send({name: 'getInfos'}, (response) => {
           const infos = response.payload
 
-          this.table.history = infos.history.map(item => {
+          this.table.history = infos.ownWaitingTx.map(item => {
             item.amount = item.amount / 100
-            item.amount = item.amount.toFixed(2)
+            item.amount = '(' + item.amount.toFixed(2) + ')'
             return item
-          })
+          }).reverse()
 
-          this.table.waitingTx = infos.ownWaitingTx.map(item => {
+          this.table.history = this.table.history.concat(infos.history.map(item => {
             item.amount = item.amount / 100
             item.amount = item.amount.toFixed(2)
             return item
-          })
+          }).reverse())
         })
       }
     },

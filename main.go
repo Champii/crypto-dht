@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"os/signal"
+	"syscall"
 	"encoding/json"
 	"time"
 
@@ -146,8 +148,11 @@ func manageArgs() {
 
 		if err := client.Start(); err != nil {
 			client.Logger().Critical(err)
+
 			return err
 		}
+
+		listenExitSignals(client)
 
 		if options.NoGui {
 			client.Wait()
@@ -159,6 +164,24 @@ func manageArgs() {
 	}
 
 	app.Run(os.Args)
+}
+
+func listenExitSignals(client *blockchain.Blockchain) {
+	sigs := make(chan os.Signal, 1)
+
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<- sigs
+
+		exitProperly(client)
+
+		os.Exit(0)
+	}()
+}
+
+func exitProperly(client *blockchain.Blockchain) {
+	client.Stop()
 }
 
 func main() {
@@ -248,7 +271,11 @@ func handleMessages(w *astilectron.Window, m bootstrap.MessageIn) (payload inter
 	case "send":
 		var r string
 		json.Unmarshal(m.Payload, &r)
-		payload = bc.SendTo(r)
+		err := bc.SendTo(r)
+		payload = nil
+		if err != nil {
+			payload = err.Error()
+		}
 	}
 	return
 }
@@ -342,3 +369,4 @@ func startOne(options blockchain.BlockchainOptions) *blockchain.Blockchain {
 
 	return client
 }
+
