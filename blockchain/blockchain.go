@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"sync"
 	"encoding/hex"
 	"errors"
 	"math/big"
@@ -28,22 +29,32 @@ type UnspentTxOut struct {
 	inIdx  int
 }
 
+type HistoryTx struct {
+	Address   string `json:"address"`
+	Timestamp int64  `json:"timestamp"`
+	Amount    int    `json:"amount"`
+}
+
 type Blockchain struct {
+	sync.RWMutex
 	status                 int
 	client                 *dht.Dht
 	logger                 *logging.Logger
 	options                BlockchainOptions
 	lastBlockTargetChanged *Block
 	lastBlock              *Block
+	headers                []*BlockHeader
 	baseTarget             []byte
 	lastTarget             []byte
 	wallets                map[string]*Wallet
 	unspentTxOut           map[string][]*UnspentTxOut
 	pendingTransactions    []Transaction
+	miningBlock            *Block
 	synced                 bool
 	mustStop               bool
 	stats                  *Stats
 	running                bool
+	history                []HistoryTx
 }
 
 type BlockchainOptions struct {
@@ -61,6 +72,7 @@ type BlockchainOptions struct {
 
 func New(options BlockchainOptions) *Blockchain {
 	target, _ := hex.DecodeString("000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+	// target, _ := hex.DecodeString("000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
 	if options.Stats {
 		options.Verbose = 2
@@ -89,12 +101,22 @@ func (this *Blockchain) Init() {
 		BootstrapAddr: this.options.BootstrapAddr,
 		Verbose:       this.options.Verbose,
 		OnStore: func(cmd dht.Packet) bool {
-			data := cmd.Data.(dht.StoreInst).Data
-			switch data.(type) {
-			case Block:
-				block := data.(Block)
-				return this.AddBlock(&block)
-			default:
+			this.Lock()
+			defer this.Unlock()
+			block := Block{}
+			err := msgpack.Unmarshal(cmd.Data.(dht.StoreInst).Data.([]byte), &block)
+
+			if err != nil {
+				this.logger.Critical("ONSTORE Unmarshal error", err.Error())
+
+				return false
+			}
+
+			if block.Header.Height == this.lastBlock.Header.Height + 1 {
+				return block.Verify(this)
+			} else if block.Header.Height <= this.lastBlock.Header.Height {
+				return block.VerifyOld(this)
+			} else {
 				return false
 			}
 		},
@@ -125,6 +147,8 @@ func (this *Blockchain) Init() {
 
 	this.lastBlockTargetChanged = originalBlock
 	this.lastBlock = originalBlock
+	this.headers = append(this.headers, &originalBlock.Header)
+	this.miningBlock = originalBlock
 }
 
 func (this *Blockchain) Start() error {
@@ -182,19 +206,23 @@ func (this *Blockchain) SendTo(value string) error {
 		return errors.New("Invalid amount: " + splited[0])
 	}
 
-	// _, ok := this.unspentTxOut[splited[1]]
+	pub := UnsanitizePubKey(splited[1])
 
-	// if !ok {
-	// 	return errors.New("Unknown dest address: " + splited[1])
-	// }
+	tx := NewTransaction(amount, pub, this)
 
-	tx := NewTransaction(amount, []byte(splited[1]), this)
-
-	if tx == nil {
+	if tx == nil || !tx.Verify(this) || this.hasPending(tx) {
 		return errors.New("Unable to create the transaction")
 	}
 
-	serie, err := msgpack.Marshal(&tx)
+	if HasDoubleSpend(append(this.pendingTransactions, *tx)) {
+		return errors.New("Created a double spending transaction !")
+	}
+
+	this.pendingTransactions = append(this.pendingTransactions, *tx)
+
+	this.mustStop = true
+
+	serie, err := msgpack.Marshal(tx)
 
 	if err != nil {
 		return errors.New("Cannot marshal transaction: " + err.Error())
@@ -212,6 +240,17 @@ func (this *Blockchain) Logger() *logging.Logger {
 	return this.logger
 }
 
+
+func (this *Blockchain) hasPending(tx *Transaction) bool {
+	for _, t := range this.pendingTransactions {
+		if compare(t.GetHash(), tx.GetHash()) == 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (this *Blockchain) Dispatch(cmd dht.Packet) interface{} {
 	switch cmd.Data.(dht.CustomCmd).Command {
 	case COMMAND_CUSTOM_NEW_TRANSACTION:
@@ -219,13 +258,17 @@ func (this *Blockchain) Dispatch(cmd dht.Packet) interface{} {
 
 		msgpack.Unmarshal(cmd.Data.(dht.CustomCmd).Data.([]uint8), &tx)
 
-		if !tx.Verify(this) {
+		if !tx.Verify(this) || this.hasPending(&tx){
+			return nil
+		}
+
+		if HasDoubleSpend(append(this.pendingTransactions, tx)) {
 			return nil
 		}
 
 		this.pendingTransactions = append(this.pendingTransactions, tx)
 
-		this.mustStop = true
+		// this.mustStop = true
 
 	case COMMAND_CUSTOM_NEW_BLOCK:
 		// var block Block
@@ -284,7 +327,6 @@ func (this *Blockchain) Sync() {
 			if !this.AddBlock(&block) {
 				this.logger.Warning("Sync: Received bad block")
 
-				return
 			}
 
 			this.mustStop = true
@@ -306,6 +348,9 @@ func (this *Blockchain) AddBlock(block *Block) bool {
 	}
 
 	this.lastBlock = block
+	this.Lock()
+	this.headers = append(this.headers, &block.Header)
+	this.Unlock()
 
 	this.UpdateUnspentTxOuts(block)
 	this.RemovePendingTransaction(block.Transactions)
@@ -368,9 +413,9 @@ func (this *Blockchain) Mine() {
 
 	go func() {
 		for this.running {
-			block := NewBlock(this)
+			this.miningBlock = NewBlock(this)
 
-			block.Mine(this.stats, &this.mustStop)
+			this.miningBlock.Mine(this.stats, &this.mustStop)
 
 			if this.mustStop {
 				this.mustStop = false
@@ -380,14 +425,14 @@ func (this *Blockchain) Mine() {
 				return
 			}
 
-			this.logger.Info("Found block !", hex.EncodeToString(block.Header.Hash))
+			this.logger.Info("Found block !", hex.EncodeToString(this.miningBlock.Header.Hash))
 
-			serie, _ := msgpack.Marshal(&block)
+			serie, _ := msgpack.Marshal(this.miningBlock)
 
 			_, nb, err := this.client.StoreAt(NewHash(this.lastBlock.Header.Hash), serie)
 
 			if err != nil || nb == 0 {
-				this.logger.Warning("ERROR STORING BLOCK IN THE DHT !", hex.EncodeToString(block.Header.Hash))
+				this.logger.Warning("ERROR STORING BLOCK IN THE DHT !", hex.EncodeToString(this.miningBlock.Header.Hash))
 
 				continue
 
@@ -428,6 +473,62 @@ func (this *Blockchain) TimeSinceLastBlock() int64 {
 
 func (this *Blockchain) StoredKeys() int {
 	return this.client.StoredKeys()
+}
+
+func (this *Blockchain) WaitingTransactionCount() int {
+	return len(this.pendingTransactions)
+}
+
+func (this *Blockchain) GetOwnHistory() []HistoryTx {
+	return this.history
+}
+
+func (this *Blockchain) GetOwnWaitingTx() []HistoryTx {
+	res := []HistoryTx{}
+
+	for _, tx := range this.pendingTransactions {
+		txValue := 0
+
+		own := false
+
+		addr := tx.Stamp.Pub
+		if compare(tx.Stamp.Pub, this.wallets["main.key"].pub) == 0 {
+			own = true
+		}
+
+		for _, out := range tx.Outs {
+			if own && compare(out.Address, this.wallets["main.key"].pub) != 0 {
+				txValue -= out.Value
+				addr = out.Address
+			}
+
+			if !own && compare(out.Address, this.wallets["main.key"].pub) == 0 {
+				txValue += out.Value
+			}
+
+			if len(tx.Ins) == 0 && len(tx.Outs) == 1 {
+				txValue = 0
+			}
+		}
+
+		if txValue != 0 {
+			res = append(res, HistoryTx{
+				Address:   SanitizePubKey(addr),
+				Timestamp: time.Now().Unix(),
+				Amount:    txValue,
+			})
+		}
+	}
+
+	return res
+}
+
+func (this *Blockchain) ProcessingTransactionCount() int {
+	if !this.running {
+		return 0
+	}
+
+	return len(this.miningBlock.Transactions) - 1
 }
 
 func (this *Blockchain) Difficulty() int64 {

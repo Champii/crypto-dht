@@ -1,5 +1,7 @@
 package blockchain
 
+import "strconv"
+
 func (this *Blockchain) getUnspentTxOut() {
 
 }
@@ -26,6 +28,15 @@ func (this *Blockchain) UpdateUnspentTxOuts(block *Block) {
 	for _, tx := range block.Transactions {
 		hash := tx.GetHash()
 
+		own := false
+
+		txValue := 0
+
+		addr := tx.Stamp.Pub
+		if compare(tx.Stamp.Pub, this.wallets["main.key"].pub) == 0 {
+			own = true
+		}
+
 		for _, in := range tx.Ins {
 			out := this.getCorrespondingOutTx(tx.Stamp.Pub, &in)
 
@@ -39,12 +50,34 @@ func (this *Blockchain) UpdateUnspentTxOuts(block *Block) {
 		}
 
 		for i, out := range tx.Outs {
+			if own && compare(out.Address, this.wallets["main.key"].pub) != 0 {
+				txValue -= out.Value
+				addr = out.Address
+			}
+
+			if !own && compare(out.Address, this.wallets["main.key"].pub) == 0 {
+				txValue += out.Value
+			}
+
+			if len(tx.Ins) == 0 && len(tx.Outs) == 1 && compare(out.Address, this.wallets["main.key"].pub) == 0 {
+				txValue += out.Value
+				addr = []byte("Miner fee (Block " + strconv.FormatInt(block.Header.Height, 10) + ")")
+			}
+
 			walletStr := SanitizePubKey(out.Address)
 
 			this.unspentTxOut[walletStr] = append(this.unspentTxOut[walletStr], &UnspentTxOut{
 				out:    out,
 				inIdx:  i,
 				txHash: hash,
+			})
+		}
+
+		if txValue != 0 {
+			this.history = append(this.history, HistoryTx{
+				Address:   SanitizePubKey(addr),
+				Timestamp: block.Header.Timestamp,
+				Amount:    txValue,
 			})
 		}
 	}
@@ -61,7 +94,7 @@ func (this *Blockchain) RemoveUnspentOut(wallet []byte, out *UnspentTxOut) {
 	}
 
 	if idx == -1 {
-		this.logger.Critical("WARNING !!!!! IMPOSSIBLE REMOVEUNSPENT TX OUT")
+		this.logger.Critical("WARNING !!!!! IMPOSSIBLE REMOVE UNSPENT TX OUT")
 
 		return
 	}
@@ -92,18 +125,18 @@ func (this *Blockchain) GetEnoughOwnUnspentOut(value int) []*UnspentTxOut {
 	return res
 }
 
-func (this *Blockchain) GetAvailableFunds(wallet []byte) float64 {
+func (this *Blockchain) GetAvailableFunds(wallet []byte) int {
 	walletStr := SanitizePubKey(wallet)
-	var total float64
+	var total int
 
 	total = 0
 
 	// fmt.Println("Ouech", hex.EncodeToString(wallet.pub))
 	for _, out := range this.unspentTxOut[walletStr] {
-		total += float64(out.out.Value)
+		total += out.out.Value
 	}
 
-	return total / 1000000
+	return total
 }
 
 // Used to create a transaction without loss

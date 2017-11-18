@@ -123,3 +123,8 @@ func SanitizePubKey(pub []byte) string {
 
 	return pemEncodedPubStr
 }
+
+func UnsanitizePubKey(pub string) []byte {
+	pub = pub[:64] + "\n" + pub[64:]
+	return []byte("-----BEGIN PUBLIC KEY-----\n" + pub + "\n-----END PUBLIC KEY-----\n")
+}

@@ -48,7 +48,8 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 
 ## Todo
 
-- Deactivate GUI for some commands (-n, -s, -S, -i)
+- Fees
+- Scrypt
 - Store unspentTxOut and blockHeigh on disk to avoid resync all the chain each time
 - Merkel tree
 - Better GUI

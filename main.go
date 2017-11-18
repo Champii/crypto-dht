@@ -174,26 +174,30 @@ var (
 )
 
 type MinerInfo struct {
-	Hashrate int  `json:"hashrate"`
-	Running  bool `json:"running"`
+	Hashrate                int  `json:"hashrate"`
+	Running                 bool `json:"running"`
+	WaitingTransactions     int  `json:"waitingTransactions"`
+	ProcessingTransactions  int  `json:"processingTransactions"`
 }
 
 type BaseInfo struct {
-	MinerInfo          MinerInfo      `json:"minerInfo"`
-	Wallets            []WalletClient `json:"wallets"`
-	NodesNb            int            `json:"nodesNb"`
-	Synced             bool           `json:"synced"`
-	BlocksHeight       int64          `json:"blocksHeight"`
-	Difficulty         int64          `json:"difficulty"`
-	NextDifficulty     int64          `json:"nextDifficulty"`
-	TimeSinceLastBlock int64          `json:"timeSinceLastBlock"`
-	StoredKeys         int            `json:"storedKeys"`
+	MinerInfo          MinerInfo              `json:"minerInfo"`
+	Wallets            []WalletClient         `json:"wallets"`
+	NodesNb            int                    `json:"nodesNb"`
+	Synced             bool                   `json:"synced"`
+	BlocksHeight       int64                  `json:"blocksHeight"`
+	Difficulty         int64                  `json:"difficulty"`
+	NextDifficulty     int64                  `json:"nextDifficulty"`
+	TimeSinceLastBlock int64                  `json:"timeSinceLastBlock"`
+	StoredKeys         int                    `json:"storedKeys"`
+	History            []blockchain.HistoryTx `json:"history"`
+	OwnWaitingTx       []blockchain.HistoryTx `json:"ownWaitingTx"`
 }
 
 type WalletClient struct {
 	Name    string  `json:"name"`
 	Address string  `json:"address"`
-	Amount  float64 `json:"amount"`
+	Amount  int     `json:"amount"`
 }
 
 func GetBaseInfos() BaseInfo {
@@ -202,6 +206,7 @@ func GetBaseInfos() BaseInfo {
 	for _, wallet := range wallets {
 		walletsRes = append(walletsRes, WalletClient{
 			Name:    wallet.Name(),
+			// Address: wallet.Pub(),
 			Address: blockchain.SanitizePubKey(wallet.Pub()),
 			Amount:  bc.GetAvailableFunds(wallet.Pub()),
 		})
@@ -224,9 +229,13 @@ func GetBaseInfos() BaseInfo {
 		NextDifficulty:     bc.NextDifficulty(),
 		StoredKeys:         bc.StoredKeys(),
 		TimeSinceLastBlock: bc.TimeSinceLastBlock(),
+		History:            bc.GetOwnHistory(),
+		OwnWaitingTx:       bc.GetOwnWaitingTx(),
 		MinerInfo: MinerInfo{
-			Hashrate: hashRate,
-			Running:  bc.Running(),
+			Hashrate:                hashRate,
+			Running:                 bc.Running(),
+			WaitingTransactions:     bc.WaitingTransactionCount(),
+			ProcessingTransactions:  bc.ProcessingTransactionCount(),
 		},
 	}
 }
@@ -239,7 +248,6 @@ func handleMessages(w *astilectron.Window, m bootstrap.MessageIn) (payload inter
 	case "send":
 		var r string
 		json.Unmarshal(m.Payload, &r)
-		// bc.Logger().Warning("SEND", r)
 		payload = bc.SendTo(r)
 	}
 	return

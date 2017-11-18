@@ -47,7 +47,7 @@ func OriginBlock(bc *Blockchain) *Block {
 	if originalBlock == nil {
 		originalBlock = &Block{
 			Header: BlockHeader{
-				Height:    1,
+				Height:    0,
 				PrecHash:  []byte{},
 				Timestamp: 0,
 				Target:    bc.lastTarget,
@@ -88,6 +88,47 @@ func (this *Block) Mine(stats *Stats, mustStop *bool) {
 	}
 
 	this.Header.Hash = newHash
+}
+
+func (this *Block) VerifyOld(bc *Blockchain) bool {
+	storedHeader := bc.headers[this.Header.Height]
+
+	hash := this.Header.Hash
+	this.Header.Hash = []byte{}
+
+	tmp, _ := msgpack.Marshal(&this.Header)
+	newHash := NewHash(tmp)
+
+	this.Header.Hash = hash
+
+	if compare(newHash, storedHeader.Hash) != 0 {
+		bc.logger.Error("Block verify old: Hashes does not match with stored one")
+
+		return false
+	}
+
+	if compare(newHash, hash) != 0 {
+		bc.logger.Error("Block verify old: Hashes does not match")
+
+		return false
+	}
+
+	// todo: check merkelTree
+
+	if len(this.Transactions[0].Ins) > 0 || len(this.Transactions[0].Outs) != 1 {
+		bc.logger.Error("Block verify: Bad coinbase transaction")
+		return false
+	}
+
+	for _, tx := range this.Transactions {
+		if !tx.Verify(bc) {
+			bc.logger.Error("Block verify: Bad transaction")
+
+			return false
+		}
+	}
+
+	return true
 }
 
 func (this *Block) Verify(bc *Blockchain) bool {
@@ -138,7 +179,31 @@ func (this *Block) Verify(bc *Blockchain) bool {
 		}
 	}
 
+	if HasDoubleSpend(this.Transactions) {
+		bc.logger.Error("Block verify: Double spend")
+
+		return false
+	}
+
 	return true
+}
+
+func HasDoubleSpend(transactions []Transaction) bool {
+	seen := make(map[string]int)
+
+	for _, tx := range transactions {
+		for _, in := range tx.Ins {
+			v, hasSeen := seen[string(in.PrevHash)]
+
+			if hasSeen && v == in.PrevIdx {
+				return true
+			}
+
+			seen[string(in.PrevHash)] = in.PrevIdx
+		}
+	}
+
+	return false
 }
 
 func compare(b1, b2 []byte) int {

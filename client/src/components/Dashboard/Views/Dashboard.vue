@@ -68,14 +68,22 @@
         ]
       }
     },
-    created () {
-      this.timer = setInterval(() => {
+    methods: {
+      getInfos: function () {
         astilectron.send({name: 'getInfos'}, (response) => {
           console.log(response)
           const infos = response.payload
 
           const wallets = infos.wallets
-          this.statsCards[0].value = wallets.reduce((memo, item) => memo + item.amount, 0) + ''
+
+          let pendingAmount = (infos.ownWaitingTx.reduce((memo, item) => memo + item.amount, 0) / 100)
+          if (pendingAmount === 0) {
+            pendingAmount = ''
+          } else {
+            pendingAmount = ' (' + ((pendingAmount > 0) ? ('+' + pendingAmount.toFixed(2)) : pendingAmount.toFixed(2)) + ')'
+          }
+
+          this.statsCards[0].value = (wallets.reduce((memo, item) => memo + item.amount, 0) / 100).toFixed(2) + pendingAmount
           this.statsCards[0].footerText = wallets.length + ' wallets'
 
           this.statsCards[1].value = infos.blocksHeight
@@ -83,11 +91,17 @@
 
           const minerInfo = infos.minerInfo
           this.statsCards[2].value = minerInfo.hashrate + ' h/s'
-          this.statsCards[2].footerText = minerInfo.running ? 'Running' : 'Stopped'
+          this.statsCards[2].footerText = (minerInfo.running ? 'Running' : 'Stopped') + '. Wait tx: ' + minerInfo.waitingTransactions + '. Proc tx: ' + minerInfo.processingTransactions
 
           this.statsCards[3].value = infos.storedKeys
           this.statsCards[3].footerText = 'Nodes: ' + infos.nodesNb + '. ' + (infos.synced ? 'Synced' : 'Syncing...')
         })
+      }
+    },
+    created () {
+      this.getInfos()
+      this.timer = setInterval(() => {
+        this.getInfos()
       }, 1000)
     },
     destroyed () {

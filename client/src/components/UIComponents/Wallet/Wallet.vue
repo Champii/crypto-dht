@@ -2,14 +2,14 @@
   <div class="card">
     <div class="content">
       <div class="row">
-        <div class="">
-          {{item.name}}
-        </div>
-        <div class="">
-          {{item.amount}}
-        </div>
-        <div class="">
-          {{item.address}}
+        <div class="col-lg-12">
+          <span class="">
+            {{item.amount}}
+          </span>
+          <span class="">
+            <input id="addr" type="text" :value="item.address">
+            <button v-on:click="copy">Copy</button>
+          </span>
         </div>
       </div>
       <div class="row">
@@ -52,11 +52,18 @@
       }
     },
     methods: {
+      copy: function () {
+        const copyText = document.getElementById('addr')
+        copyText.select()
+        document.execCommand('copy')
+      },
       send: function () {
-        astilectron.send({name: 'send', payload: this.amount + ':' + this.destination}, (response) => {
+        const amount = Number(this.amount) * 100
+        const dest = this.destination
+        this.amount = 0
+        this.destination = ''
+        astilectron.send({name: 'send', payload: amount + ':' + dest}, (response) => {
           console.log('SENT', response)
-          this.amount = 0
-          this.destination = ''
         })
       }
     }

@@ -85,7 +85,7 @@ func (this *Transaction) Verify(bc *Blockchain) bool {
 
 	// lets assume this will work any time
 	if len(this.Ins) == 0 && len(this.Outs) == 1 {
-		if this.Outs[0].Value != 1000000 {
+		if this.Outs[0].Value != 100 {
 			bc.logger.Error("Tx verify: Bad coinbase amount")
 
 			return false
@@ -159,7 +159,7 @@ func NewCoinBaseTransaction(bc *Blockchain) *Transaction {
 		},
 		Ins: []TxIn{},
 		Outs: []TxOut{TxOut{
-			Value:   1000000,
+			Value:   100,
 			Address: bc.wallets["main.key"].pub,
 		}},
 	}
