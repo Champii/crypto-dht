@@ -34,9 +34,10 @@ func NewBlock(bc *Blockchain) *Block {
 		Transactions: bc.pendingTransactions,
 	}
 
-	block.Transactions = append([]Transaction{*NewCoinBaseTransaction(bc)}, block.Transactions...)
+	cbTx := NewCoinBaseTransaction(bc)
+	block.Transactions = append([]Transaction{*cbTx}, block.Transactions...)
 
-	// todo: merkel tree
+	block.processMerkelTree()
 
 	return block
 }
@@ -57,8 +58,9 @@ func OriginBlock(bc *Blockchain) *Block {
 		}
 
 		hash, _ := msgpack.Marshal(&originalBlock.Header)
-
-		originalBlock.Header.Hash = hash
+		newHash := NewHash(hash)
+		
+		originalBlock.Header.Hash = newHash
 	}
 
 	return originalBlock
@@ -93,51 +95,20 @@ func (this *Block) Mine(stats *Stats, mustStop *bool) {
 func (this *Block) VerifyOld(bc *Blockchain) bool {
 	storedHeader := bc.headers[this.Header.Height]
 
-	hash := this.Header.Hash
-	this.Header.Hash = []byte{}
+	if !this.verifyCommon(bc) {
+		return false
+	}
 
-	tmp, _ := msgpack.Marshal(&this.Header)
-	newHash := NewHash(tmp)
-
-	this.Header.Hash = hash
-
-	if compare(newHash, storedHeader.Hash) != 0 {
+	if compare(this.Header.Hash, storedHeader.Hash) != 0 {
 		bc.logger.Error("Block verify old: Hashes does not match with stored one")
 
 		return false
 	}
 
-	if compare(newHash, hash) != 0 {
-		bc.logger.Error("Block verify old: Hashes does not match")
-
-		return false
-	}
-
-	// todo: check merkelTree
-
-	if len(this.Transactions[0].Ins) > 0 || len(this.Transactions[0].Outs) != 1 {
-		bc.logger.Error("Block verify: Bad coinbase transaction")
-		return false
-	}
-
-	for _, tx := range this.Transactions {
-		if !tx.Verify(bc) {
-			bc.logger.Error("Block verify: Bad transaction")
-
-			return false
-		}
-	}
-
 	return true
 }
 
-func (this *Block) Verify(bc *Blockchain) bool {
-	if this.Header.Height != bc.headers[len(bc.headers)-1].Height+1 {
-		bc.logger.Error("Block verify: Bad height")
-
-		return false
-	}
-
+func (this *Block) verifyCommon(bc *Blockchain) bool {
 	hash := this.Header.Hash
 	this.Header.Hash = []byte{}
 
@@ -149,6 +120,39 @@ func (this *Block) Verify(bc *Blockchain) bool {
 	if compare(newHash, hash) != 0 {
 		bc.logger.Error("Block verify: Hashes does not match")
 
+		return false
+	}
+
+	if len(this.Transactions[0].Ins) > 0 || len(this.Transactions[0].Outs) != 1 {
+		bc.logger.Error("Block verify: Bad coinbase transaction")
+		return false
+	}
+
+	for _, tx := range this.Transactions {
+		if !tx.Verify(bc) {
+			bc.logger.Error("Block verify: Bad transaction")
+			
+			return false
+		}
+	}
+	
+	if !this.verifyMerkelTree() {
+		bc.logger.Error("Block verify: Bad Merkel hash")
+
+		return false
+	}
+	
+	return true
+}
+
+func (this *Block) Verify(bc *Blockchain) bool {
+	if this.Header.Height != bc.headers[len(bc.headers)-1].Height+1 {
+		bc.logger.Error("Block verify: Bad height")
+
+		return false
+	}
+
+	if !this.verifyCommon(bc) {
 		return false
 	}
 
@@ -164,21 +168,6 @@ func (this *Block) Verify(bc *Blockchain) bool {
 		return false
 	}
 
-	// todo: check merkelTree
-
-	if len(this.Transactions[0].Ins) > 0 || len(this.Transactions[0].Outs) != 1 {
-		bc.logger.Error("Block verify: Bad coinbase transaction")
-		return false
-	}
-
-	for _, tx := range this.Transactions {
-		if !tx.Verify(bc) {
-			bc.logger.Error("Block verify: Bad transaction")
-
-			return false
-		}
-	}
-
 	if HasDoubleSpend(this.Transactions) {
 		bc.logger.Error("Block verify: Double spend")
 
@@ -186,6 +175,51 @@ func (this *Block) Verify(bc *Blockchain) bool {
 	}
 
 	return true
+}
+
+func (this *Block) verifyMerkelTree() bool {
+	tree := [][]byte{}
+	for _, tx := range this.Transactions {
+		tree = append(tree, tx.Stamp.Hash)
+	}
+
+	for len(tree) > 1 {
+		tree = processOneMerkelTreeRow(tree)
+	}
+	
+	return compare(this.Header.MerkelHash, tree[0]) == 0
+}
+
+func (this *Block) processMerkelTree() {
+	tree := [][]byte{}
+	for _, tx := range this.Transactions {
+		tree = append(tree, tx.Stamp.Hash)
+	}
+
+	for len(tree) > 1 {
+		tree = processOneMerkelTreeRow(tree)
+	}
+	
+	this.Header.MerkelHash = tree[0]
+}
+
+func processOneMerkelTreeRow(row [][]byte) [][]byte {
+	res := [][]byte{}
+
+	for i := 0; i < len(row); {
+		addr1 := row[i]
+		addr2 := addr1
+
+		if i + 1 < len(row) {
+			addr2 = row[i + 1]
+		}
+
+		res = append(res, NewHash(append(addr1, addr2...)))
+
+		i += 2
+	}
+
+	return res
 }
 
 func HasDoubleSpend(transactions []Transaction) bool {

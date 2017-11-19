@@ -26,7 +26,7 @@ func (this *Blockchain) getCorrespondingOutTx(wallet []byte, in *TxIn) *UnspentT
 
 func (this *Blockchain) UpdateUnspentTxOuts(block *Block) {
 	for _, tx := range block.Transactions {
-		hash := tx.GetHash()
+		hash := tx.Stamp.Hash
 
 		own := false
 

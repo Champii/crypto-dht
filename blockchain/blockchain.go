@@ -250,7 +250,7 @@ func (this *Blockchain) Logger() *logging.Logger {
 
 func (this *Blockchain) hasPending(tx *Transaction) bool {
 	for _, t := range this.pendingTransactions {
-		if compare(t.GetHash(), tx.GetHash()) == 0 {
+		if compare(t.Stamp.Hash, tx.Stamp.Hash) == 0 {
 			return true
 		}
 	}
@@ -269,18 +269,7 @@ func (this *Blockchain) Dispatch(cmd dht.Packet) interface{} {
 			return nil
 		}
 
-		// this.mustStop = true
-
 	case COMMAND_CUSTOM_NEW_BLOCK:
-		// var block Block
-
-		// msgpack.Unmarshal(cmd.Data.(dht.CustomCmd).Data.([]uint8), &block)
-
-		// if !this.AddBlock(&block) {
-		// 	return nil
-		// }
-
-		// this.mustStop = true
 	}
 
 	return nil
@@ -290,46 +279,40 @@ func (this *Blockchain) Wait() {
 	this.client.Wait()
 }
 
-func (this *Blockchain) Sync() {
-	var lastErr error
+func (this *Blockchain) doSync() error {
+	block_, err := this.client.Fetch(NewHash(this.headers[len(this.headers)-1].Hash))
 
+	if err != nil {
+		return err
+	}
+	
+	var block Block
+	
+	msgpack.Unmarshal(block_.([]uint8), &block)
+	
+	if !this.AddBlock(&block) {
+		this.logger.Warning("Sync: Received bad block")
+	
+		return errors.New("Cannot add block")
+	}
+
+	return nil
+}
+
+func (this *Blockchain) Sync() {
 	this.logger.Info("Start syncing at", len(this.headers) - 1)
 
-	for lastErr == nil {
-		block_, err := this.client.Fetch(NewHash(this.headers[len(this.headers)-1].Hash))
-
-		lastErr = err
-		if err == nil {
-			var block Block
-
-			msgpack.Unmarshal(block_.([]uint8), &block)
-
-			if !this.AddBlock(&block) {
-				this.logger.Warning("Sync: Received bad block")
-
-				return
-			}
-		}
+	for this.doSync() == nil {
 	}
 
 	this.synced = true
 
 	go func() {
 		for {
-			block_, err := this.client.Fetch(NewHash(this.headers[len(this.headers)-1].Hash))
-
-			if err != nil {
+			if err := this.doSync(); err != nil {
 				time.Sleep(time.Second * 5)
+
 				continue
-			}
-
-			var block Block
-
-			msgpack.Unmarshal(block_.([]uint8), &block)
-
-			if !this.AddBlock(&block) {
-				this.logger.Warning("Sync: Received bad block")
-
 			}
 
 			this.mustStop = true
@@ -442,6 +425,8 @@ func (this *Blockchain) Mine() {
 			}
 
 			this.stats.foundBlocks++
+
+			this.doSync()
 		}
 	}()
 }

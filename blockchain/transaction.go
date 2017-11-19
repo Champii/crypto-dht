@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"time"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
@@ -21,47 +22,56 @@ type TxOut struct {
 }
 
 type Stamp struct {
-	R   []byte
-	S   []byte
-	Pub []byte
+	R         []byte
+	S         []byte
+	Pub       []byte
+	Hash      []byte
+	Timestamp int64
 }
 
 type Transaction struct {
-	Ins   []TxIn
-	Outs  []TxOut
-	Stamp Stamp
-}
-
-func (this *Transaction) GetHash() []byte {
-	r := this.Stamp.R
-	s := this.Stamp.S
-
-	this.Stamp.R = []byte{}
-	this.Stamp.S = []byte{}
-
-	hash, _ := msgpack.Marshal(this)
-
-	this.Stamp.R = r
-	this.Stamp.S = s
-
-	return hash
+	Ins       []TxIn
+	Outs      []TxOut
+	Stamp 	  Stamp
 }
 
 func (this *Transaction) Verify(bc *Blockchain) bool {
 	r := this.Stamp.R
 	s := this.Stamp.S
+	txHash := this.Stamp.Hash
 
 	this.Stamp.R = []byte{}
 	this.Stamp.S = []byte{}
+	this.Stamp.Hash = []byte{}
 
-	hash, _ := msgpack.Marshal(this)
+	hash, err := msgpack.Marshal(this)
+	
+	if err != nil {
+		bc.logger.Error("Tx verify: Cannot marshal the tx")
+		
+		return false
+	}
+		
+	newHash := NewHash(hash)
+	
+	this.Stamp.Hash = txHash
+
+	if compare(newHash, this.Stamp.Hash) != 0 {
+		bc.logger.Error("Tx verify: Hash dont match", newHash)
+
+		return false
+	}
 
 	blockPub, _ := pem.Decode(this.Stamp.Pub)
 
 	if blockPub == nil {
-		bc.logger.Error("Tx verify: Cannot decode pub signature from tx", string(this.Stamp.Pub))
+		bc.logger.Error("Tx verify: Cannot decode pub signature from tx", 
+                    string(this.Stamp.Pub))
+
 		return false
 	}
+
+	// verify timestamp
 
 	x509EncodedPub := blockPub.Bytes
 	genericPublicKey, _ := x509.ParsePKIXPublicKey(x509EncodedPub)
@@ -74,7 +84,7 @@ func (this *Transaction) Verify(bc *Blockchain) bool {
 	var s_ big.Int
 	s_.SetBytes(s)
 
-	if !ecdsa.Verify(publicKey, hash, &r_, &s_) {
+	if !ecdsa.Verify(publicKey, newHash, &r_, &s_) {
 		bc.logger.Error("Tx verify: Signatures does not match")
 
 		return false
@@ -82,6 +92,7 @@ func (this *Transaction) Verify(bc *Blockchain) bool {
 
 	this.Stamp.R = r
 	this.Stamp.S = s
+	
 
 	// lets assume this will work any time
 	if len(this.Ins) == 0 && len(this.Outs) == 1 {
@@ -135,24 +146,37 @@ func NewTransaction(value int, dest []byte, bc *Blockchain) *Transaction {
 	transac := &Transaction{
 		Stamp: Stamp{
 			Pub: bc.wallets["main.key"].pub,
+			Timestamp: time.Now().Unix(),
+			Hash: []byte{},
+			R: []byte{},
+			S: []byte{},
 		},
 		Ins:  insRes,
 		Outs: outRes,
 	}
-
-	hash, _ := msgpack.Marshal(transac)
-
-	r, s, err := ecdsa.Sign(rand.Reader, bc.wallets["main.key"].key, hash)
-
+	
+	hash, err := msgpack.Marshal(transac)
+	
 	if err != nil {
-		bc.logger.Warning("Cannot create transaction: Signature error", err)
-
+		bc.logger.Warning("Cannot marshal the transaction", err)
+		
 		return nil
 	}
-
+	
+	newHash := NewHash(hash)
+	transac.Stamp.Hash = newHash
+	
+	r, s, err := ecdsa.Sign(rand.Reader, bc.wallets["main.key"].key, newHash)
+	
+	if err != nil {
+		bc.logger.Warning("Cannot create transaction: Signature error", err)
+		
+		return nil
+	}
+	
 	transac.Stamp.R = r.Bytes()
 	transac.Stamp.S = s.Bytes()
-
+	
 	return transac
 }
 
@@ -160,6 +184,10 @@ func NewCoinBaseTransaction(bc *Blockchain) *Transaction {
 	transac := &Transaction{
 		Stamp: Stamp{
 			Pub: bc.wallets["main.key"].pub,
+			Timestamp: time.Now().Unix(),
+			Hash: []byte{},
+			R: []byte{},
+			S: []byte{},
 		},
 		Ins: []TxIn{},
 		Outs: []TxOut{TxOut{
@@ -167,11 +195,21 @@ func NewCoinBaseTransaction(bc *Blockchain) *Transaction {
 			Address: bc.wallets["main.key"].pub,
 		}},
 	}
+	
+	hash, err := msgpack.Marshal(transac)
+	
+	if err != nil {
+		bc.logger.Warning("Cannot marshal the transaction", err)
+		
+		return nil
+	}
 
-	hash, _ := msgpack.Marshal(transac)
-
-	r, s, err := ecdsa.Sign(rand.Reader, bc.wallets["main.key"].key, hash)
-
+	newHash := NewHash(hash)
+	
+	transac.Stamp.Hash = newHash
+	
+	r, s, err := ecdsa.Sign(rand.Reader, bc.wallets["main.key"].key, newHash)
+	
 	if err != nil {
 		return nil
 	}
@@ -184,19 +222,20 @@ func NewCoinBaseTransaction(bc *Blockchain) *Transaction {
 
 func (this *Blockchain) RemovePendingTransaction(insTx []Transaction) {
 	for _, inTx := range insTx {
-		inTxHash := inTx.GetHash()
+		inTxHash := inTx.Stamp.Hash
 
 		idx := -1
 
 		for i, tx := range this.pendingTransactions {
-			if compare(inTxHash, tx.GetHash()) == 0 {
+			if compare(inTxHash, tx.Stamp.Hash) == 0 {
 				idx = i
 				break
 			}
 		}
 
 		if idx > -1 {
-			this.pendingTransactions = append(this.pendingTransactions[:idx], this.pendingTransactions[idx+1:]...)
+			this.pendingTransactions = append(this.pendingTransactions[:idx], 
+																				this.pendingTransactions[idx+1:]...)
 		}
 	}
 }

@@ -50,10 +50,13 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 
 ## Todo
 
+- handle forks
+- Dont permanently sync but rather use broadcast to spread and listen to new blocks
+- Hash pub key to make addresses shorter
+- (Make DHT address the hash of the wallet? anonymity may be compromised, don't allow for multiple connexions with same address)
 - Get pending transactions from other nodes
 - Fees
 - Scrypt
-- Merkel tree
 - Better GUI
 - Manage wallets
 - Recheck blockchain
