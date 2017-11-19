@@ -1,17 +1,28 @@
-# crypto-dht
+# Crypto-DHT
 Experimental Blockchain over DHT
 
+## Jump To
+
+- [Background](#background)
+- [Features](#features)
+- [Details](#details)
+- [Usage](#usage)
+- [Build](#build)
+  - [Setup](#setup)
+  - [Bundle](#bundle)
+- [Todo](#todo)
+
 ## Background
+
+Bitcoin is a quickly growing crypto-currency, gaining interest from the public
+by its capacity to emit some digital money, to transfer that money between wallets,
+to assure a certain anonymity in those transfers,
+and all of that without intervention of any bank or any other third party. (other than part of the network, ofc)
 
 A Decentralized Hash Table (DHT) is a form of network used to store some content
 in the form of key/value pairs. It differs from classical hash tables from its 
 decentralized nature. In fact, each node participating in a DHT can fetch and store
 addressable content by key, as well as storing and serving a fraction of that hash table.
-
-Bitcoin is a quickly growing crypto-currency, quickly gaining interest from the public
-by its capacity to emit some digital money, to transfer that money between wallets,
-to assure a certain anonymity in those transfers,
-and all of that without intervention of any bank or any other third party. (other than part of the network, ofc)
 
 Bitcoin based blockchains all share the same characteristic: In order to reach 
 a consensus, each and every nodes participating in the network have to keep a 
@@ -33,7 +44,9 @@ some records when mining time has come:
 every wallet) in order to validate incoming transactions
 - By extension every known address (wallet) that hold or have held some coins
 
-This client is implemented following the list above.
+Each of that implies that we have to fetch all the chain at least once, build what
+we need from it, and throw it away. Then we just have to stay synced with new incoming blocks
+to update our data on the fly.
 
 ## Features
 
@@ -46,6 +59,7 @@ Based on my own DHT implementation in GO: [go-dht](https://github.com/champii/go
 ![Screenshot](https://github.com/champii/crypto-dht/raw/master/screenshot.png "Screenshot")
 ![Screenshot2](https://github.com/champii/crypto-dht/raw/master/screenshot2.png "Screenshot2")
 ![Screenshot3](https://github.com/champii/crypto-dht/raw/master/screenshot3.png "Screenshot3")
+
 
 
 ## Usage
@@ -75,10 +89,45 @@ OPTIONS:
   -V, --version              Print version
 ```
 
+## Details
+
+`What happend when a new node connects to the network ?`
+
+Try to figure the network as a circle, with 2^127 possible points on it from
+address 0x0 to 0xFFFF...
+When a node connects to the network (via a bootstrap node), it choose a unique 160bit key as its address and to represent itself.
+
+If the node does not have a wallet yet, one is created.
+
+It then starts to ask the bootstrap node for its neighborhood, creating a routing table
+with the other nodes it discovers along the way. It then starts to populate its 
+routing table further by asking for random values, again adding nodes on its way.
+
+At this time, it starts to synchronise from the DHT by polling the next block (or the first if this is a new connection)
+
+Its easy to find a block in the DHT:
+
+Given a block `b1` and a hash function `H`, to find the address `k` of the next block
+inside the DHT, we muse obtain the hash `h1` of that first block with 
+
+`h1 = H(b1)`.
+
+As this hash is not evenly distributed (must be less than the current target), we 
+hash it again to obtain the address `k` of the next block: 
+
+`k = H(h)`
+
+We can start from the hash of the genesis block (that is fixed) and keep going
+by hashing each block hash we got to get the next one etc, etc.
+
+When the DHT answers a NOT_FOUND or an error, we stop synchronising.
+
+
 ## Build
 
 
 ### Setup
+
 ```
 $> cd client
 $> npm install
