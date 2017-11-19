@@ -16,8 +16,8 @@ func (this *Blockchain) getCorrespondingOutTx(wallet []byte, in *TxIn) *UnspentT
 	}
 
 	for i, out := range outs {
-		if out.inIdx == in.PrevIdx && compare(out.txHash, in.PrevHash) == 0 {
-			return this.unspentTxOut[walletStr][i]
+		if out.InIdx == in.PrevIdx && compare(out.TxHash, in.PrevHash) == 0 {
+			return &this.unspentTxOut[walletStr][i]
 		}
 	}
 
@@ -66,10 +66,10 @@ func (this *Blockchain) UpdateUnspentTxOuts(block *Block) {
 
 			walletStr := SanitizePubKey(out.Address)
 
-			this.unspentTxOut[walletStr] = append(this.unspentTxOut[walletStr], &UnspentTxOut{
-				out:    out,
-				inIdx:  i,
-				txHash: hash,
+			this.unspentTxOut[walletStr] = append(this.unspentTxOut[walletStr], UnspentTxOut{
+				Out:    out,
+				InIdx:  i,
+				TxHash: hash,
 			})
 		}
 
@@ -88,7 +88,7 @@ func (this *Blockchain) RemoveUnspentOut(wallet []byte, out *UnspentTxOut) {
 	idx := -1
 
 	for i := range this.unspentTxOut[walletStr] {
-		if this.unspentTxOut[walletStr][i] == out {
+		if &this.unspentTxOut[walletStr][i] == out {
 			idx = i
 		}
 	}
@@ -102,18 +102,18 @@ func (this *Blockchain) RemoveUnspentOut(wallet []byte, out *UnspentTxOut) {
 	this.unspentTxOut[walletStr] = append(this.unspentTxOut[walletStr][:idx], this.unspentTxOut[walletStr][idx+1:]...)
 }
 
-func (this *Blockchain) GetEnoughOwnUnspentOut(value int) []*UnspentTxOut {
+func (this *Blockchain) GetEnoughOwnUnspentOut(value int) []UnspentTxOut {
 	walletStr := SanitizePubKey(this.wallets["main.key"].pub)
 
-	var res []*UnspentTxOut
+	var res []UnspentTxOut
 
 	total := 0
 	for _, unspent := range this.unspentTxOut[walletStr] {
-		if unspent.isTargeted {
+		if unspent.IsTargeted {
 			continue
 		}
 
-		total += unspent.out.Value
+		total += unspent.Out.Value
 
 		res = append(res, unspent)
 
@@ -123,7 +123,7 @@ func (this *Blockchain) GetEnoughOwnUnspentOut(value int) []*UnspentTxOut {
 	}
 
 	if total < value {
-		return []*UnspentTxOut{}
+		return []UnspentTxOut{}
 	}
 
 	return res
@@ -137,25 +137,25 @@ func (this *Blockchain) GetAvailableFunds(wallet []byte) int {
 
 	// fmt.Println("Ouech", hex.EncodeToString(wallet.pub))
 	for _, out := range this.unspentTxOut[walletStr] {
-		total += out.out.Value
+		total += out.Out.Value
 	}
 
 	return total
 }
 
 // Used to create a transaction without loss
-func (this *Blockchain) GetInOutFromUnspent(value int, destWallet []byte, outs []*UnspentTxOut) ([]TxIn, []TxOut) {
+func (this *Blockchain) GetInOutFromUnspent(value int, destWallet []byte, outs []UnspentTxOut) ([]TxIn, []TxOut) {
 	insRes := []TxIn{}
 	outsRes := []TxOut{}
 
 	total := 0
 	for _, out := range outs {
 		insRes = append(insRes, TxIn{
-			PrevHash: out.txHash,
-			PrevIdx:  out.inIdx,
+			PrevHash: out.TxHash,
+			PrevIdx:  out.InIdx,
 		})
 
-		total += out.out.Value
+		total += out.Out.Value
 	}
 
 	outsRes = append(outsRes, TxOut{

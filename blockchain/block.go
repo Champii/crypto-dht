@@ -25,8 +25,8 @@ type Block struct {
 func NewBlock(bc *Blockchain) *Block {
 	block := &Block{
 		Header: BlockHeader{
-			Height:    bc.lastBlock.Header.Height + 1,
-			PrecHash:  bc.lastBlock.Header.Hash,
+			Height:    bc.headers[len(bc.headers)-1].Height + 1,
+			PrecHash:  bc.headers[len(bc.headers)-1].Hash,
 			Timestamp: time.Now().Unix(),
 			Target:    bc.lastTarget,
 			Hash:      []byte{},
@@ -132,7 +132,7 @@ func (this *Block) VerifyOld(bc *Blockchain) bool {
 }
 
 func (this *Block) Verify(bc *Blockchain) bool {
-	if this.Header.Height != bc.lastBlock.Header.Height+1 {
+	if this.Header.Height != bc.headers[len(bc.headers)-1].Height+1 {
 		bc.logger.Error("Block verify: Bad height")
 
 		return false
@@ -152,7 +152,7 @@ func (this *Block) Verify(bc *Blockchain) bool {
 		return false
 	}
 
-	if compare(bc.lastBlock.Header.Hash, this.Header.PrecHash) != 0 {
+	if compare(bc.headers[len(bc.headers)-1].Hash, this.Header.PrecHash) != 0 {
 		bc.logger.Error("Block verify: Bad previous hash")
 
 		return false

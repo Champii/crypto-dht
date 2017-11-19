@@ -24,10 +24,10 @@ const (
 var EXPECTED_10_BLOCKS_TIME int64 = 600
 
 type UnspentTxOut struct {
-	out        TxOut
-	txHash     []byte
-	inIdx      int
-	isTargeted bool
+	Out        TxOut
+	TxHash     []byte
+	InIdx      int
+	IsTargeted bool
 }
 
 type HistoryTx struct {
@@ -38,17 +38,14 @@ type HistoryTx struct {
 
 type Blockchain struct {
 	sync.RWMutex
-	status                 int
 	client                 *dht.Dht
 	logger                 *logging.Logger
 	options                BlockchainOptions
-	lastBlockTargetChanged *Block
-	lastBlock              *Block
-	headers                []*BlockHeader
+	headers                []BlockHeader
 	baseTarget             []byte
 	lastTarget             []byte
 	wallets                map[string]*Wallet
-	unspentTxOut           map[string][]*UnspentTxOut
+	unspentTxOut           map[string][]UnspentTxOut
 	pendingTransactions    []Transaction
 	miningBlock            *Block
 	synced                 bool
@@ -72,7 +69,7 @@ type BlockchainOptions struct {
 }
 
 func New(options BlockchainOptions) *Blockchain {
-	target, _ := hex.DecodeString("000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+	target, _ := hex.DecodeString("00000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 	// target, _ := hex.DecodeString("000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
 	if options.Stats {
@@ -80,12 +77,11 @@ func New(options BlockchainOptions) *Blockchain {
 	}
 
 	bc := &Blockchain{
-		status:              0,
 		options:             options,
 		baseTarget:          target,
 		lastTarget:          target,
 		wallets:             make(map[string]*Wallet),
-		unspentTxOut:        make(map[string][]*UnspentTxOut),
+		unspentTxOut:        make(map[string][]UnspentTxOut),
 		mustStop:            false,
 		stats:               &Stats{},
 		pendingTransactions: []Transaction{},
@@ -113,9 +109,9 @@ func (this *Blockchain) Init() {
 				return false
 			}
 
-			if block.Header.Height == this.lastBlock.Header.Height + 1 {
+			if block.Header.Height == this.headers[len(this.headers)-1].Height + 1 {
 				return block.Verify(this)
-			} else if block.Header.Height <= this.lastBlock.Header.Height {
+			} else if block.Header.Height <= this.headers[len(this.headers)-1].Height {
 				return block.VerifyOld(this)
 			} else {
 				return false
@@ -146,14 +142,27 @@ func (this *Blockchain) Init() {
 
 	OriginBlock(this)
 
-	this.lastBlockTargetChanged = originalBlock
-	this.lastBlock = originalBlock
-	this.headers = append(this.headers, &originalBlock.Header)
+	this.headers = append(this.headers, originalBlock.Header)
 	this.miningBlock = originalBlock
+
+	if err := LoadStoredHeaders(this); err != nil {
+		this.logger.Critical("Cannot load stored headers", err)
+
+		return
+	}
+
+	if err := LoadUnspent(this); err != nil {
+		this.logger.Critical("Cannot load unspent tx", err)
+
+		return
+	}
+
 }
 
 func (this *Blockchain) Stop()  {
 	this.client.Stop()
+	StoreLastHeaders(this)
+	StoreUnspent(this)
 }
 
 func (this *Blockchain) Start() error {
@@ -284,8 +293,10 @@ func (this *Blockchain) Wait() {
 func (this *Blockchain) Sync() {
 	var lastErr error
 
+	this.logger.Info("Start syncing at", len(this.headers) - 1)
+
 	for lastErr == nil {
-		block_, err := this.client.Fetch(NewHash(this.lastBlock.Header.Hash))
+		block_, err := this.client.Fetch(NewHash(this.headers[len(this.headers)-1].Hash))
 
 		lastErr = err
 		if err == nil {
@@ -305,7 +316,7 @@ func (this *Blockchain) Sync() {
 
 	go func() {
 		for {
-			block_, err := this.client.Fetch(NewHash(this.lastBlock.Header.Hash))
+			block_, err := this.client.Fetch(NewHash(this.headers[len(this.headers)-1].Hash))
 
 			if err != nil {
 				time.Sleep(time.Second * 5)
@@ -335,13 +346,11 @@ func (this *Blockchain) AddBlock(block *Block) bool {
 		return false
 	}
 
-	if compare(block.Header.PrecHash, originalBlock.Header.Hash) == 0 {
-		this.lastBlockTargetChanged = block
-	}
-
-	this.lastBlock = block
 	this.Lock()
-	this.headers = append(this.headers, &block.Header)
+	this.headers = append(this.headers, block.Header)
+	if err := StoreLastHeaders(this); err != nil {
+		this.logger.Warning("Cannot store last headers", err)
+	}
 	this.Unlock()
 
 	this.UpdateUnspentTxOuts(block)
@@ -349,6 +358,10 @@ func (this *Blockchain) AddBlock(block *Block) bool {
 
 	if block.Header.Height%10 == 0 {
 		this.adjustDifficulty(block)
+	}
+
+	if err := StoreUnspent(this); err != nil {
+		this.logger.Warning("Cannot store unspents", err)
 	}
 
 	return true
@@ -363,7 +376,7 @@ func (this *Blockchain) adjustDifficulty(block *Block) {
 	oldDiff := big.NewInt(0)
 	oldDiff = oldDiff.Quo(base, actual)
 
-	timePassed := block.Header.Timestamp - this.lastBlockTargetChanged.Header.Timestamp
+	timePassed := block.Header.Timestamp - this.headers[block.Header.Height - 10].Timestamp
 
 	newDiff := big.NewInt(0)
 	newDiff = newDiff.Mul(oldDiff, big.NewInt(EXPECTED_10_BLOCKS_TIME/timePassed))
@@ -388,8 +401,6 @@ func (this *Blockchain) adjustDifficulty(block *Block) {
 	for len(this.lastTarget) < len(this.baseTarget) {
 		this.lastTarget = append([]byte{0}, this.lastTarget...)
 	}
-
-	this.lastBlockTargetChanged = block
 }
 
 func (this *Blockchain) Mine() {
@@ -421,7 +432,7 @@ func (this *Blockchain) Mine() {
 
 			serie, _ := msgpack.Marshal(this.miningBlock)
 
-			_, nb, err := this.client.StoreAt(NewHash(this.lastBlock.Header.Hash), serie)
+			_, nb, err := this.client.StoreAt(NewHash(this.headers[len(this.headers)-1].Hash), serie)
 
 			if err != nil || nb == 0 {
 				this.logger.Warning("ERROR STORING BLOCK IN THE DHT !", hex.EncodeToString(this.miningBlock.Header.Hash))
@@ -433,6 +444,20 @@ func (this *Blockchain) Mine() {
 			this.stats.foundBlocks++
 		}
 	}()
+}
+
+func (this *Blockchain) AreHeadersGood() bool {
+	lastHeaderHash := this.headers[0].Hash
+
+	for _, header := range this.headers[1:] {
+		if compare(header.PrecHash, lastHeaderHash) != 0 {
+			return false
+		}
+
+		lastHeaderHash = header.Hash
+	}
+
+	return true
 }
 
 func (this *Blockchain) Wallets() map[string]*Wallet {
@@ -456,11 +481,11 @@ func (this *Blockchain) GetConnectedNodesNb() int {
 }
 
 func (this *Blockchain) BlocksHeight() int64 {
-	return this.lastBlock.Header.Height
+	return this.headers[len(this.headers)-1].Height
 }
 
 func (this *Blockchain) TimeSinceLastBlock() int64 {
-	return time.Now().Unix() - this.lastBlock.Header.Timestamp
+	return time.Now().Unix() - this.headers[len(this.headers)-1].Timestamp
 }
 
 func (this *Blockchain) StoredKeys() int {
@@ -541,13 +566,13 @@ func (this *Blockchain) NextDifficulty() int64 {
 	oldDiff := big.NewInt(0)
 	oldDiff = oldDiff.Quo(base, actual)
 
-	timePassed := (time.Now().Unix() - this.lastBlockTargetChanged.Header.Timestamp)
+	timePassed := (time.Now().Unix() - this.headers[len(this.headers)-1].Timestamp)
 
 	if timePassed == 0 {
 		return oldDiff.Int64()
 	}
 
-	nbBlocks := this.lastBlock.Header.Height - this.lastBlockTargetChanged.Header.Height + 1
+	nbBlocks := int64((len(this.headers)-1) % 10)
 
 	if nbBlocks == 0 {
 		nbBlocks = 1

@@ -104,7 +104,7 @@ func (this *Transaction) Verify(bc *Blockchain) bool {
 			return false
 		}
 
-		insTotal += prevUnspentOut.out.Value
+		insTotal += prevUnspentOut.Out.Value
 	}
 
 	outsTotal := 0
@@ -225,7 +225,7 @@ func (this *Blockchain) AddTransationToWaiting(tx *Transaction) bool {
 			return false
 		}
 
-		if out.isTargeted {
+		if out.IsTargeted {
 			this.logger.Warning("Got transaction with double spending")
 
 			return false
@@ -233,7 +233,7 @@ func (this *Blockchain) AddTransationToWaiting(tx *Transaction) bool {
 	}
 
 	for _, out := range outs {
-		out.isTargeted = true
+		out.IsTargeted = true
 	}
 
 	this.pendingTransactions = append(this.pendingTransactions, *tx)
