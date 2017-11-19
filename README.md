@@ -8,6 +8,11 @@ in the form of key/value pairs. It differs from classical hash tables from its
 decentralized nature. In fact, each node participating in a DHT can fetch and store
 addressable content by key, as well as storing and serving a fraction of that hash table.
 
+Bitcoin is a quickly growing crypto-currency, quickly gaining interest from the public
+by its capacity to emit some digital money, to transfer that money between wallets,
+to assure a certain anonymity in those transfers,
+and all of that without any intervention of a bank or any other third party. (other than part of the network, ofc)
+
 Bitcoin based blockchains all share the same characteristic: In order to reach 
 a consensus, each and every nodes participating in the network have to keep a 
 full copy of the blockchain. Even if this issue has been solved with light wallets
@@ -28,7 +33,7 @@ every wallet) in order to validate incoming transactions
 
 This client is implemented following the list above.
 
-## Info
+## Features
 
 Based on my own DHT implementation in GO: [go-dht](https://github.com/champii/go-dht)
 
@@ -70,6 +75,18 @@ OPTIONS:
 
 ## Build
 
+
+### Setup
+```
+$> cd client
+$> npm install
+$> npm run build // You have to run this everytime the client change
+$> cd ..
+$> go build
+```
+
+### Bundle
+
 ```
 $> go get -u github.com/asticode/go-astilectron-bundler/...
 $> ./scripts/build.sh
@@ -81,8 +98,6 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 
 - handle forks
 - Dont permanently sync but rather use broadcast to spread and listen to new blocks
-- Hash pub key to make addresses shorter
-- (Make DHT address the hash of the wallet? anonymity may be compromised, don't allow for multiple connexions with same address)
 - Get pending transactions from other nodes
 - Fees
 - Scrypt
@@ -91,3 +106,4 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 - Recheck blockchain
 - Config file
 - Daemon ?
+- (Make DHT address the hash of the wallet? anonymity may be compromised, don't allow for multiple connexions with same address)
