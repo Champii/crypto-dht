@@ -11,16 +11,18 @@ addressable content by key, as well as storing and serving a fraction of that ha
 Bitcoin is a quickly growing crypto-currency, quickly gaining interest from the public
 by its capacity to emit some digital money, to transfer that money between wallets,
 to assure a certain anonymity in those transfers,
-and all of that without any intervention of a bank or any other third party. (other than part of the network, ofc)
+and all of that without intervention of any bank or any other third party. (other than part of the network, ofc)
 
 Bitcoin based blockchains all share the same characteristic: In order to reach 
 a consensus, each and every nodes participating in the network have to keep a 
 full copy of the blockchain. Even if this issue has been solved with light wallets
 and other trust-based protocol, a majority of the nodes need to keep a full copy
-of the blockchain in order for the network to keep working well.
+of the blockchain in order for the network to keep working well. At this time, 
+this blockchain is now 240GB big. (!) New arrivants have to wait at least one week 
+before starting to actualy use their wallet.
 
-This experimental project is a try to avoid to keep all the blockchain, but instead
-store it in a DHT. This way every node has to keep a small
+This experimental project try to avoid keeping all the blockchain, but instead
+prefers to store it in a DHT. This way every node has to keep a small
 portion of the blocks, depending on its own address in the DHT, the number of keys stored
 and the number of nodes participating in the network.
 
