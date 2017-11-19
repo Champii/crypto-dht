@@ -53,7 +53,6 @@ The output binary will be in `./build/linux-amd64/crypto-dht`
 - Get pending transactions from other nodes
 - Fees
 - Scrypt
-- Store unspentTxOut and blockHeigh on disk to avoid resync all the chain each time
 - Merkel tree
 - Better GUI
 - Manage wallets
