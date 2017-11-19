@@ -1,14 +1,19 @@
 <template>
-  <div class="row">
-    <div class="col-lg-12">
-      <div class="col-lg-12">
-        <select v-model="selected">
-          <option v-for="wallet in wallets" v-bind:value="wallet">{{wallet.name}}</option>
-        </select>
+  <div class="content">
+    <div class="card">
+      <div class="content">
+        <div class="row">
+          <div class="col-lg-12">
+            <label>Wallet: </label>
+            <select v-model="selected">
+              <option v-for="wallet in wallets" v-bind:value="wallet">{{wallet.name}}</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <wallet :item="selected">
-      </wallet>
     </div>
+    <wallet :item="selected">
+    </wallet>
   </div>
 </template>
 <script>

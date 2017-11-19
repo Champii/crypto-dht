@@ -272,7 +272,7 @@ func handleMessages(w *astilectron.Window, m bootstrap.MessageIn) (payload inter
 		var r string
 		json.Unmarshal(m.Payload, &r)
 		err := bc.SendTo(r)
-		payload = nil
+		payload = ""
 		if err != nil {
 			payload = err.Error()
 		}
@@ -309,7 +309,7 @@ func gui(bc_ *blockchain.Blockchain) {
 		WindowOptions: &astilectron.WindowOptions{
 			BackgroundColor: astilectron.PtrStr("#333"),
 			Center:          astilectron.PtrBool(true),
-			Height:          astilectron.PtrInt(435),
+			Height:          astilectron.PtrInt(450),
 			Width:           astilectron.PtrInt(1050),
 			Resizable:       astilectron.PtrBool(false),
 			Frame:           astilectron.PtrBool(false),

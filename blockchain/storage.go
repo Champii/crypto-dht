@@ -97,7 +97,7 @@ func LoadStoredHeaders(bc *Blockchain) error {
 		}
 	}
 
-	bc.logger.Info("Loaded", len(bc.headers) - 1, "blocks !")
+	bc.logger.Debug("Loaded", len(bc.headers) - 1, "blocks !")
 
 	return nil
 }
@@ -122,7 +122,7 @@ func StoreLastHeaders(bc *Blockchain) error {
 		return err
 	}
 
-	bc.logger.Info("Stored", nb -1, "blocks in file", fileNumber)
+	bc.logger.Debug("Stored", nb -1, "blocks in file", fileNumber)
 
 	return nil
 }
@@ -153,7 +153,7 @@ func LoadUnspent(bc *Blockchain) error {
 		bc.unspentTxOut[wallet] = unspents
 	}
 
-	bc.logger.Info("Loaded", len(bc.unspentTxOut), "wallets unspent out")
+	bc.logger.Debug("Loaded", len(bc.unspentTxOut), "wallets unspent out")
 
 	return nil
 }
@@ -173,7 +173,7 @@ func StoreUnspent(bc *Blockchain) error {
 		}
 	}
 
-	bc.logger.Info("Stored", len(bc.unspentTxOut), "wallets unspent out")
+	bc.logger.Debug("Stored", len(bc.unspentTxOut), "wallets unspent out")
 
 	return nil
 }

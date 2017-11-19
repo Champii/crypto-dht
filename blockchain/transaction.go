@@ -192,7 +192,7 @@ func NewCoinBaseTransaction(bc *Blockchain) *Transaction {
 		Ins: []TxIn{},
 		Outs: []TxOut{TxOut{
 			Value:   100,
-			Address: bc.wallets["main.key"].pub,
+			Address: []byte(SanitizePubKey(bc.wallets["main.key"].pub)),
 		}},
 	}
 	

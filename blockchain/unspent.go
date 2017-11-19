@@ -32,7 +32,9 @@ func (this *Blockchain) UpdateUnspentTxOuts(block *Block) {
 
 		txValue := 0
 
-		addr := tx.Stamp.Pub
+		ownAddrStr := []byte(SanitizePubKey(this.wallets["main.key"].pub))
+
+		addr := SanitizePubKey(tx.Stamp.Pub)
 		if compare(tx.Stamp.Pub, this.wallets["main.key"].pub) == 0 {
 			own = true
 		}
@@ -50,21 +52,21 @@ func (this *Blockchain) UpdateUnspentTxOuts(block *Block) {
 		}
 
 		for i, out := range tx.Outs {
-			if own && compare(out.Address, this.wallets["main.key"].pub) != 0 {
+			if own && compare(out.Address, ownAddrStr) != 0 {
 				txValue -= out.Value
-				addr = out.Address
+				addr = string(out.Address)
 			}
 
-			if !own && compare(out.Address, this.wallets["main.key"].pub) == 0 {
+			if !own && compare(out.Address, ownAddrStr) == 0 {
 				txValue += out.Value
 			}
 
-			if len(tx.Ins) == 0 && len(tx.Outs) == 1 && compare(out.Address, this.wallets["main.key"].pub) == 0 {
+			if len(tx.Ins) == 0 && len(tx.Outs) == 1 && compare(out.Address, ownAddrStr) == 0 {
 				txValue += out.Value
-				addr = []byte("Miner fee (Block " + strconv.FormatInt(block.Header.Height, 10) + ")")
+				addr = "Miner fee (Block " + strconv.FormatInt(block.Header.Height, 10) + ")"
 			}
 
-			walletStr := SanitizePubKey(out.Address)
+			walletStr := string(out.Address)
 
 			this.unspentTxOut[walletStr] = append(this.unspentTxOut[walletStr], UnspentTxOut{
 				Out:    out,
@@ -75,7 +77,7 @@ func (this *Blockchain) UpdateUnspentTxOuts(block *Block) {
 
 		if txValue != 0 {
 			this.history = append(this.history, HistoryTx{
-				Address:   SanitizePubKey(addr),
+				Address:   addr,
 				Timestamp: block.Header.Timestamp,
 				Amount:    txValue,
 			})
@@ -166,7 +168,7 @@ func (this *Blockchain) GetInOutFromUnspent(value int, destWallet []byte, outs [
 	if total > value {
 		outsRes = append(outsRes, TxOut{
 			Value:   total - value,
-			Address: this.wallets["main.key"].pub,
+			Address: []byte(SanitizePubKey(this.wallets["main.key"].pub)),
 		})
 	}
 

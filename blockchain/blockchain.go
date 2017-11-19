@@ -69,7 +69,7 @@ type BlockchainOptions struct {
 }
 
 func New(options BlockchainOptions) *Blockchain {
-	target, _ := hex.DecodeString("00000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+	target, _ := hex.DecodeString("000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 	// target, _ := hex.DecodeString("000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
 	if options.Stats {
@@ -220,11 +220,11 @@ func (this *Blockchain) SendTo(value string) error {
 		return errors.New("Invalid amount: " + splited[0])
 	}
 
-	pub := UnsanitizePubKey(splited[1])
+	// pub := UnsanitizePubKey(splited[1])
 
-	tx := NewTransaction(amount, pub, this)
+	tx := NewTransaction(amount, []byte(splited[1]), this)
 
-	if tx == nil || !this.AddTransationToWaiting(tx) {
+	if tx == nil || !this.AddTransationToWaiting(tx) { 
 		return errors.New("Unable to create the transaction")
 	}
 
@@ -493,18 +493,20 @@ func (this *Blockchain) GetOwnWaitingTx() []HistoryTx {
 
 		own := false
 
-		addr := tx.Stamp.Pub
+		addr := SanitizePubKey(tx.Stamp.Pub)
+		ownAddrStr := []byte(SanitizePubKey(this.wallets["main.key"].pub))
+
 		if compare(tx.Stamp.Pub, this.wallets["main.key"].pub) == 0 {
 			own = true
 		}
 
 		for _, out := range tx.Outs {
-			if own && compare(out.Address, this.wallets["main.key"].pub) != 0 {
+			if own && compare(out.Address, ownAddrStr) != 0 {
 				txValue -= out.Value
-				addr = out.Address
+				addr = string(out.Address)
 			}
 
-			if !own && compare(out.Address, this.wallets["main.key"].pub) == 0 {
+			if !own && compare(out.Address, ownAddrStr) == 0 {
 				txValue += out.Value
 			}
 
@@ -515,7 +517,7 @@ func (this *Blockchain) GetOwnWaitingTx() []HistoryTx {
 
 		if txValue != 0 {
 			res = append(res, HistoryTx{
-				Address:   SanitizePubKey(addr),
+				Address:   addr,
 				Timestamp: time.Now().Unix(),
 				Amount:    txValue,
 			})

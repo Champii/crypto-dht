@@ -1,15 +1,44 @@
 # crypto-dht
 Experimental Blockchain over DHT
 
+## Background
+
+A Decentralized Hash Table (DHT) is a form of network used to store some content
+in the form of key/value pairs. It differs from classical hash tables from its 
+decentralized nature. In fact, each node participating in a DHT can fetch and store
+addressable content by key, as well as storing and serving a fraction of that hash table.
+
+Bitcoin based blockchains all share the same characteristic: In order to reach 
+a consensus, each and every nodes participating in the network have to keep a 
+full copy of the blockchain. Even if this issue has been solved with light wallets
+and other trust-based protocol, a majority of the nodes need to keep a full copy
+of the blockchain in order for the network to keep working well.
+
+This experimental project is a try to avoid to keep all the blockchain, but instead
+store it in a DHT. This way every node has to keep a small
+portion of the blocks, depending on its own address in the DHT, the number of keys stored
+and the number of nodes participating in the network.
+
+Even if the blocks are stored in a decentralized way, every node still have to keep
+some records when mining time has come:
+- Every block's header, to validate a block when it comes for storage
+- Every UTXOs (Unspent Transaction Output, basicaly forming the balances of
+every wallet) in order to validate incoming transactions
+- By extension every known address (wallet) that hold or have held some coins
+
+This client is implemented following the list above.
+
 ## Info
 
 Based on my own DHT implementation in GO: [go-dht](https://github.com/champii/go-dht)
 
 - One block every minute
+- Base block revenue is 1.00 coin (100 cents)
 - DHT for block storage.
 
 ![Screenshot](https://github.com/champii/crypto-dht/raw/master/screenshot.png "Screenshot")
 ![Screenshot2](https://github.com/champii/crypto-dht/raw/master/screenshot2.png "Screenshot2")
+![Screenshot3](https://github.com/champii/crypto-dht/raw/master/screenshot3.png "Screenshot3")
 
 
 ## Usage

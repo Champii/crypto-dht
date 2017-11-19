@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"encoding/hex"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -9,7 +10,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
-	"strings"
+	// "strings"
 )
 
 type Wallet struct {
@@ -58,7 +59,10 @@ func GetWallets(bc *Blockchain) error {
 			return err
 		}
 
-		pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
+		pemEncodedPub := pem.EncodeToMemory(&pem.Block{
+			Type: "PUBLIC KEY", 
+			Bytes: x509EncodedPub,
+		})
 
 		bc.logger.Info("Loaded wallet", wallet.Name(), SanitizePubKey(pemEncodedPub))
 
@@ -74,7 +78,8 @@ func GetWallets(bc *Blockchain) error {
 }
 
 func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
-	_, err := os.Stat(bc.options.Folder + "/wallets/" + name + ".key")
+	walletPath := bc.options.Folder+"/wallets/"+name+".key"
+	_, err := os.Stat(walletPath)
 
 	if err == nil {
 		return nil, errors.New("Existing wallet " + name + ".key")
@@ -97,11 +102,14 @@ func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
 	if err != nil {
 		return nil, err
 	}
-	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
+	pemEncodedPub := pem.EncodeToMemory(&pem.Block{
+		Type: "PUBLIC KEY", 
+		Bytes: x509EncodedPub,
+	})
 
 	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: priv})
 
-	err = ioutil.WriteFile(bc.options.Folder+"/wallets/"+name+".key", pemEncoded, 0600)
+	err = ioutil.WriteFile(walletPath, pemEncoded, 0600)
 
 	if err != nil {
 		return nil, err
@@ -117,14 +125,10 @@ func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
 }
 
 func SanitizePubKey(pub []byte) string {
-	pemEncodedPubStr := strings.Replace(string(pub), "-----BEGIN PUBLIC KEY-----", "", 1)
-	pemEncodedPubStr = strings.Replace(pemEncodedPubStr, "-----END PUBLIC KEY-----", "", 1)
-	pemEncodedPubStr = strings.Replace(pemEncodedPubStr, "\n", "", -1)
-
-	return pemEncodedPubStr
+	return hex.EncodeToString(NewHash(pub))
 }
 
-func UnsanitizePubKey(pub string) []byte {
-	pub = pub[:64] + "\n" + pub[64:]
-	return []byte("-----BEGIN PUBLIC KEY-----\n" + pub + "\n-----END PUBLIC KEY-----\n")
-}
+// func UnsanitizePubKey(pub string) []byte {
+// 	pub = pub[:64] + "\n" + pub[64:]
+// 	return []byte("-----BEGIN PUBLIC KEY-----\n" + pub + "\n-----END PUBLIC KEY-----\n")
+// }
