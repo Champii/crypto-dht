@@ -1,11 +1,11 @@
 package blockchain
 
 import (
-	"encoding/hex"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
@@ -19,7 +19,7 @@ type Wallet struct {
 	pub  []byte
 }
 
-func (this *Wallet) Name() string{
+func (this *Wallet) Name() string {
 	return this.name
 }
 
@@ -60,7 +60,7 @@ func GetWallets(bc *Blockchain) error {
 		}
 
 		pemEncodedPub := pem.EncodeToMemory(&pem.Block{
-			Type: "PUBLIC KEY", 
+			Type:  "PUBLIC KEY",
 			Bytes: x509EncodedPub,
 		})
 
@@ -78,7 +78,7 @@ func GetWallets(bc *Blockchain) error {
 }
 
 func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
-	walletPath := bc.options.Folder+"/wallets/"+name+".key"
+	walletPath := bc.options.Folder + "/wallets/" + name + ".key"
 	_, err := os.Stat(walletPath)
 
 	if err == nil {
@@ -103,7 +103,7 @@ func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
 		return nil, err
 	}
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{
-		Type: "PUBLIC KEY", 
+		Type:  "PUBLIC KEY",
 		Bytes: x509EncodedPub,
 	})
 
@@ -127,8 +127,3 @@ func CreateWallet(name string, bc *Blockchain) (*Wallet, error) {
 func SanitizePubKey(pub []byte) string {
 	return hex.EncodeToString(NewHash(pub))
 }
-
-// func UnsanitizePubKey(pub string) []byte {
-// 	pub = pub[:64] + "\n" + pub[64:]
-// 	return []byte("-----BEGIN PUBLIC KEY-----\n" + pub + "\n-----END PUBLIC KEY-----\n")
-// }

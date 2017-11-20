@@ -59,7 +59,7 @@ func OriginBlock(bc *Blockchain) *Block {
 
 		hash, _ := msgpack.Marshal(&originalBlock.Header)
 		newHash := NewHash(hash)
-		
+
 		originalBlock.Header.Hash = newHash
 	}
 
@@ -131,17 +131,17 @@ func (this *Block) verifyCommon(bc *Blockchain) bool {
 	for _, tx := range this.Transactions {
 		if !tx.Verify(bc) {
 			bc.logger.Error("Block verify: Bad transaction")
-			
+
 			return false
 		}
 	}
-	
+
 	if !this.verifyMerkelTree() {
 		bc.logger.Error("Block verify: Bad Merkel hash")
 
 		return false
 	}
-	
+
 	return true
 }
 
@@ -186,7 +186,7 @@ func (this *Block) verifyMerkelTree() bool {
 	for len(tree) > 1 {
 		tree = processOneMerkelTreeRow(tree)
 	}
-	
+
 	return compare(this.Header.MerkelHash, tree[0]) == 0
 }
 
@@ -199,7 +199,7 @@ func (this *Block) processMerkelTree() {
 	for len(tree) > 1 {
 		tree = processOneMerkelTreeRow(tree)
 	}
-	
+
 	this.Header.MerkelHash = tree[0]
 }
 
@@ -210,8 +210,8 @@ func processOneMerkelTreeRow(row [][]byte) [][]byte {
 		addr1 := row[i]
 		addr2 := addr1
 
-		if i + 1 < len(row) {
-			addr2 = row[i + 1]
+		if i+1 < len(row) {
+			addr2 = row[i+1]
 		}
 
 		res = append(res, NewHash(append(addr1, addr2...)))

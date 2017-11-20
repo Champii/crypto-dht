@@ -19,18 +19,18 @@ by its capacity to emit some digital money, to transfer that money between walle
 to assure a certain anonymity in those transfers,
 and all of that without intervention of any bank or any other third party. (other than part of the network, ofc)
 
-A Decentralized Hash Table (DHT) is a form of network used to store some content
-in the form of key/value pairs. It differs from classical hash tables from its 
-decentralized nature. In fact, each node participating in a DHT can fetch and store
-addressable content by key, as well as storing and serving a fraction of that hash table.
-
 Bitcoin based blockchains all share the same characteristic: In order to reach 
 a consensus, each and every nodes participating in the network have to keep a 
 full copy of the blockchain. Even if this issue has been solved with light wallets
 and other trust-based protocol, a majority of the nodes need to keep a full copy
-of the blockchain in order for the network to keep working well. At this time, 
+of the blockchain in order for the network to keep working well. At this time,
 this blockchain is now 240GB big. (!) New arrivants have to wait at least one week 
 before starting to actualy use their wallet.
+
+A Decentralized Hash Table (DHT) is a form of network used to store some content
+in the form of key/value pairs. It differs from classical hash tables by its 
+decentralized and distributed nature. In fact, each node participating in a DHT can fetch and store
+addressable content by key, as well as storing and serving a fraction of that hash table.
 
 This experimental project try to avoid keeping all the blockchain, but instead
 prefers to store it in a DHT. This way every node has to keep a small
@@ -115,7 +115,7 @@ inside the DHT, we muse obtain the hash `h1` of that first block with
 As this hash is not evenly distributed (must be less than the current target), we 
 hash it again to obtain the address `k` of the next block: 
 
-`k = H(h)`
+`k = H(h1)`
 
 We can start from the hash of the genesis block (that is fixed) and keep going
 by hashing each block hash we got to get the next one etc, etc.

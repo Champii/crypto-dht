@@ -66,6 +66,7 @@ type BlockchainOptions struct {
 	Verbose       int
 	Mine          bool
 	NoGui         bool
+	Cluster       int
 }
 
 func New(options BlockchainOptions) *Blockchain {

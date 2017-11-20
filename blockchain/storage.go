@@ -1,11 +1,11 @@
 package blockchain
 
 import (
+	"errors"
 	"io/ioutil"
 	"net/url"
-	"strconv"
-	"errors"
 	"os"
+	"strconv"
 
 	"github.com/vmihailenco/msgpack"
 )
@@ -77,7 +77,7 @@ func LoadStoredHeaders(bc *Blockchain) error {
 	}
 
 	for _, file := range dir {
-		headersByte, err := ioutil.ReadFile(bc.options.Folder + "/chain/" +  file.Name())
+		headersByte, err := ioutil.ReadFile(bc.options.Folder + "/chain/" + file.Name())
 
 		if err != nil {
 			return err
@@ -97,18 +97,17 @@ func LoadStoredHeaders(bc *Blockchain) error {
 		}
 	}
 
-	bc.logger.Debug("Loaded", len(bc.headers) - 1, "blocks !")
+	bc.logger.Debug("Loaded", len(bc.headers)-1, "blocks !")
 
 	return nil
 }
-
 
 func StoreLastHeaders(bc *Blockchain) error {
 	headersLen := len(bc.headers)
 
 	nb := headersLen % 1000
 
-	toStore, err := msgpack.Marshal(bc.headers[1 + headersLen - nb:])
+	toStore, err := msgpack.Marshal(bc.headers[1+headersLen-nb:])
 
 	if err != nil {
 		return err
@@ -116,13 +115,13 @@ func StoreLastHeaders(bc *Blockchain) error {
 
 	fileNumber := strconv.Itoa(headersLen / 1000)
 
-	err = ioutil.WriteFile(bc.options.Folder + "/chain/" +  fileNumber, toStore, 0644)
+	err = ioutil.WriteFile(bc.options.Folder+"/chain/"+fileNumber, toStore, 0644)
 
 	if err != nil {
 		return err
 	}
 
-	bc.logger.Debug("Stored", nb -1, "blocks in file", fileNumber)
+	bc.logger.Debug("Stored", nb-1, "blocks in file", fileNumber)
 
 	return nil
 }
@@ -135,7 +134,7 @@ func LoadUnspent(bc *Blockchain) error {
 	}
 
 	for _, file := range dir {
-		unspentsByte, err := ioutil.ReadFile(bc.options.Folder + "/unspent/" +  file.Name())
+		unspentsByte, err := ioutil.ReadFile(bc.options.Folder + "/unspent/" + file.Name())
 
 		if err != nil {
 			return err
@@ -166,7 +165,7 @@ func StoreUnspent(bc *Blockchain) error {
 			return err
 		}
 
-		err = ioutil.WriteFile(bc.options.Folder + "/unspent/" +  url.PathEscape(walletName), toStore, 0644)
+		err = ioutil.WriteFile(bc.options.Folder+"/unspent/"+url.PathEscape(walletName), toStore, 0644)
 
 		if err != nil {
 			return err

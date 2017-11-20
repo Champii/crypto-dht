@@ -20,8 +20,7 @@
     data () {
       return {
         table: {
-          tableName: 'Waiting tx',
-          tableName2: 'History tx',
+          tableName2: '',
           subTitle: '',
           columns: ['Amount', 'Timestamp', 'Address'],
           history: []
