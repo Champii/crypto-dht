@@ -8,9 +8,9 @@
     <div class="sidebar-wrapper" id="style-3">
       <div class="logo">
         <a href="#" class="simple-text">
-            <div class="logo-img">
-                <img src="static/img/logo2.png" alt="">
-            </div>
+          <div class="logo-img">
+            <img src="static/img/logo2.png" alt="">
+          </div>
           Crypto-DHT
         </a>
       </div>
@@ -56,7 +56,7 @@
       },
       activeColor: {
         type: String,
-        default: 'success',
+        default: 'danger',
         validator: (value) => {
           let acceptedValues = ['primary', 'info', 'success', 'warning', 'danger']
           return acceptedValues.indexOf(value) !== -1
@@ -95,12 +95,12 @@
     },
     data () {
       return {
-        linkHeight: 60,
+        linkHeight: 52,
         activeLinkIndex: 0,
 
         windowWidth: 0,
-        isWindows: false,
-        hasAutoHeight: false
+        isWindows: true,
+        hasAutoHeight: true
       }
     },
     methods: {

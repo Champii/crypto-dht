@@ -124,7 +124,7 @@ func gui(bc_ *blockchain.Blockchain) {
 		WindowOptions: &astilectron.WindowOptions{
 			BackgroundColor: astilectron.PtrStr("#333"),
 			Center:          astilectron.PtrBool(true),
-			Height:          astilectron.PtrInt(450),
+			Height:          astilectron.PtrInt(380),
 			Width:           astilectron.PtrInt(1050),
 			Resizable:       astilectron.PtrBool(false),
 			Frame:           astilectron.PtrBool(false),

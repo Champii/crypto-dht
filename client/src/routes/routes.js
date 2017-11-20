@@ -14,6 +14,7 @@ import Wallets from 'src/components/Dashboard/Views/Wallets.vue'
 import History from 'src/components/Dashboard/Views/History.vue'
 import Mining from 'src/components/Dashboard/Views/Mining.vue'
 import Dht from 'src/components/Dashboard/Views/Dht.vue'
+import Debug from 'src/components/Dashboard/Views/Debug.vue'
 
 const routes = [
   {
@@ -50,12 +51,12 @@ const routes = [
         path: 'dht',
         name: 'dht',
         component: Dht
+      },
+      {
+        path: 'debug',
+        name: 'debug',
+        component: Debug
       }
-      // {
-      //   path: 'typography',
-      //   name: 'typography',
-      //   component: Typography
-      // },
       // {
       //   path: 'table-list',
       //   name: 'table-list',
