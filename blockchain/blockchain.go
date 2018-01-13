@@ -1,13 +1,13 @@
 package blockchain
 
 import (
-	"sync"
 	"encoding/hex"
 	"errors"
 	"math/big"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/champii/go-dht/dht"
@@ -38,21 +38,21 @@ type HistoryTx struct {
 
 type Blockchain struct {
 	sync.RWMutex
-	client                 *dht.Dht
-	logger                 *logging.Logger
-	options                BlockchainOptions
-	headers                []BlockHeader
-	baseTarget             []byte
-	lastTarget             []byte
-	wallets                map[string]*Wallet
-	unspentTxOut           map[string][]UnspentTxOut
-	pendingTransactions    []Transaction
-	miningBlock            *Block
-	synced                 bool
-	mustStop               bool
-	stats                  *Stats
-	running                bool
-	history                []HistoryTx
+	client              *dht.Dht
+	logger              *logging.Logger
+	options             BlockchainOptions
+	headers             []BlockHeader
+	baseTarget          []byte
+	lastTarget          []byte
+	wallets             map[string]*Wallet
+	unspentTxOut        map[string][]UnspentTxOut
+	pendingTransactions []Transaction
+	miningBlock         *Block
+	synced              bool
+	mustStop            bool
+	stats               *Stats
+	running             bool
+	history             []HistoryTx
 }
 
 type BlockchainOptions struct {
@@ -98,11 +98,24 @@ func (this *Blockchain) Init() {
 		ListenAddr:    this.options.ListenAddr,
 		BootstrapAddr: this.options.BootstrapAddr,
 		Verbose:       this.options.Verbose,
-		OnStore: func(cmd dht.Packet) bool {
+		OnStore: func(pack dht.Packet) bool {
 			this.Lock()
 			defer this.Unlock()
 			block := Block{}
-			err := msgpack.Unmarshal(cmd.Data.(dht.StoreInst).Data.([]byte), &block)
+
+			// var cmd dht.StoreInst
+
+			cmd := pack.GetStore()
+
+			// pack.
+
+			// if err != nil {
+			// 	this.logger.Critical("ONSTORE Get data", err.Error())
+
+			// 	return false
+			// }
+
+			err := msgpack.Unmarshal(cmd.Header.Data, &block)
 
 			if err != nil {
 				this.logger.Critical("ONSTORE Unmarshal error", err.Error())
@@ -110,7 +123,7 @@ func (this *Blockchain) Init() {
 				return false
 			}
 
-			if block.Header.Height == this.headers[len(this.headers)-1].Height + 1 {
+			if block.Header.Height == this.headers[len(this.headers)-1].Height+1 {
 				return block.Verify(this)
 			} else if block.Header.Height <= this.headers[len(this.headers)-1].Height {
 				return block.VerifyOld(this)
@@ -120,12 +133,29 @@ func (this *Blockchain) Init() {
 		},
 
 		OnCustomCmd: func(cmd dht.Packet) interface{} {
-			return this.Dispatch(cmd)
+			// FIXME
+
+			// return this.Dispatch(cmd)
+			return nil
 		},
 
 		OnBroadcast: func(packet dht.Packet) interface{} {
+			blob := packet.GetBroadcast().Data
+
+			var cmd dht.Custom
+
+			err := msgpack.Unmarshal(blob, &cmd)
+
+			if err != nil {
+				this.logger.Error("Error on OnBroadcast", err)
+
+				return nil
+			}
+
+			// packet.Data = &cmd
+
 			if this.synced {
-				return this.Dispatch(packet)
+				return this.Dispatch(&cmd)
 			}
 
 			return nil
@@ -160,7 +190,7 @@ func (this *Blockchain) Init() {
 
 }
 
-func (this *Blockchain) Stop()  {
+func (this *Blockchain) Stop() {
 	this.client.Stop()
 	StoreLastHeaders(this)
 	StoreUnspent(this)
@@ -225,7 +255,7 @@ func (this *Blockchain) SendTo(value string) error {
 
 	tx := NewTransaction(amount, []byte(splited[1]), this)
 
-	if tx == nil || !this.AddTransationToWaiting(tx) { 
+	if tx == nil || !this.AddTransationToWaiting(tx) {
 		return errors.New("Unable to create the transaction")
 	}
 
@@ -237,7 +267,7 @@ func (this *Blockchain) SendTo(value string) error {
 		return errors.New("Cannot marshal transaction: " + err.Error())
 	}
 
-	this.client.Broadcast(dht.CustomCmd{
+	this.client.Broadcast(dht.Custom{
 		Command: COMMAND_CUSTOM_NEW_TRANSACTION,
 		Data:    serie,
 	})
@@ -259,12 +289,15 @@ func (this *Blockchain) hasPending(tx *Transaction) bool {
 	return false
 }
 
-func (this *Blockchain) Dispatch(cmd dht.Packet) interface{} {
-	switch cmd.Data.(dht.CustomCmd).Command {
+func (this *Blockchain) Dispatch(cmd *dht.Custom) interface{} {
+	// var cmd dht.CustomCmd
+	// pack.GetData(&cmd)
+
+	switch cmd.Command {
 	case COMMAND_CUSTOM_NEW_TRANSACTION:
 		var tx Transaction
 
-		msgpack.Unmarshal(cmd.Data.(dht.CustomCmd).Data.([]uint8), &tx)
+		msgpack.Unmarshal(cmd.Data, &tx)
 
 		if !this.AddTransationToWaiting(&tx) {
 			return nil
@@ -281,19 +314,19 @@ func (this *Blockchain) Wait() {
 }
 
 func (this *Blockchain) doSync() error {
-	block_, err := this.client.Fetch(NewHash(this.headers[len(this.headers)-1].Hash))
+	blob, err := this.client.Fetch(NewHash(this.headers[len(this.headers)-1].Hash))
 
 	if err != nil {
 		return err
 	}
-	
+
 	var block Block
-	
-	msgpack.Unmarshal(block_.([]uint8), &block)
-	
+
+	msgpack.Unmarshal(blob, &block)
+
 	if !this.AddBlock(&block) {
 		this.logger.Warning("Sync: Received bad block")
-	
+
 		return errors.New("Cannot add block")
 	}
 
@@ -301,7 +334,7 @@ func (this *Blockchain) doSync() error {
 }
 
 func (this *Blockchain) Sync() {
-	this.logger.Info("Start syncing at", len(this.headers) - 1)
+	this.logger.Info("Start syncing at", len(this.headers)-1)
 
 	for this.doSync() == nil {
 	}
@@ -360,7 +393,7 @@ func (this *Blockchain) adjustDifficulty(block *Block) {
 	oldDiff := big.NewInt(0)
 	oldDiff = oldDiff.Quo(base, actual)
 
-	timePassed := block.Header.Timestamp - this.headers[block.Header.Height - 10].Timestamp
+	timePassed := block.Header.Timestamp - this.headers[block.Header.Height-10].Timestamp
 
 	newDiff := big.NewInt(0)
 	newDiff = newDiff.Mul(oldDiff, big.NewInt(EXPECTED_10_BLOCKS_TIME/timePassed))
@@ -560,7 +593,7 @@ func (this *Blockchain) NextDifficulty() int64 {
 		return oldDiff.Int64()
 	}
 
-	nbBlocks := int64((len(this.headers)-1) % 10)
+	nbBlocks := int64((len(this.headers) - 1) % 10)
 
 	if nbBlocks == 0 {
 		nbBlocks = 1

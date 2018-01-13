@@ -136,7 +136,7 @@ COPYRIGHT:
 		},
 	}
 
-	app.UsageText = "dht [options]"
+	app.UsageText = "./crypto-dht [options]"
 
 	return app
 }
