@@ -3,6 +3,7 @@ Experimental Blockchain over DHT
 
 ## Jump To
 
+- [Disclaimer](#disclaimer)
 - [Background](#background)
 - [Features](#features)
 - [Details](#details)
@@ -12,6 +13,14 @@ Experimental Blockchain over DHT
   - [Bundle](#bundle)
 - [Todo](#todo)
 
+## Disclaimer
+
+This software and the associated DHT are still Proof Of Concept, and still under development.
+
+A lot of work is needed to reach a real-world usable state.
+
+PR are welcomed !
+
 ## Background
 
 Bitcoin is a quickly growing crypto-currency, gaining interest from the public
@@ -19,16 +28,16 @@ by its capacity to emit some digital money, to transfer that money between walle
 to assure a certain anonymity in those transfers,
 and all of that without intervention of any bank or any other third party. (other than part of the network, ofc)
 
-Bitcoin based blockchains all share the same characteristic: In order to reach 
-a consensus, each and every nodes participating in the network have to keep a 
+Bitcoin based blockchains all share the same characteristic: In order to reach
+a consensus, each and every nodes participating in the network have to keep a
 full copy of the blockchain. Even if this issue has been solved with light wallets
 and other trust-based protocol, a majority of the nodes need to keep a full copy
 of the blockchain in order for the network to keep working well. At this time,
-this blockchain is now 240GB big. (!) New arrivants have to wait at least one week 
+this blockchain is now 240GB big. (!) New arrivants have to wait at least one week
 before starting to actualy use their wallet.
 
 A Decentralized Hash Table (DHT) is a form of network used to store some content
-in the form of key/value pairs. It differs from classical hash tables by its 
+in the form of key/value pairs. It differs from classical hash tables by its
 decentralized and distributed nature. In fact, each node participating in a DHT can fetch and store
 addressable content by key, as well as storing and serving a fraction of that hash table.
 
@@ -100,7 +109,7 @@ When a node connects to the network (via a bootstrap node), it choose a unique 1
 If the node does not have a wallet yet, one is created.
 
 It then starts to ask the bootstrap node for its neighborhood, creating a routing table
-with the other nodes it discovers along the way. It then starts to populate its 
+with the other nodes it discovers along the way. It then starts to populate its
 routing table further by asking for random values, again adding nodes on its way.
 
 At this time, it starts to synchronise from the DHT by polling the next block (or the first if this is a new connection)
@@ -108,12 +117,12 @@ At this time, it starts to synchronise from the DHT by polling the next block (o
 Its easy to find a block in the DHT:
 
 Given a block `b1` and a hash function `H`, to find the address `k` of the next block
-inside the DHT, we muse obtain the hash `h1` of that first block with 
+inside the DHT, we muse obtain the hash `h1` of that first block with
 
 `h1 = H(b1)`.
 
-As this hash is not evenly distributed (must be less than the current target), we 
-hash it again to obtain the address `k` of the next block: 
+As this hash is not evenly distributed (must be less than the current target), we
+hash it again to obtain the address `k` of the next block:
 
 `k = H(h1)`
 
