@@ -33,7 +33,7 @@ a consensus, each and every nodes participating in the network have to keep a
 full copy of the blockchain. Even if this issue has been solved with light wallets
 and other trust-based protocol, a majority of the nodes need to keep a full copy
 of the blockchain in order for the network to keep working well. At this time,
-this blockchain is now 240GB big. (!) New arrivants have to wait at least one week
+this blockchain is now 150GB big. (!) New arrivants have to wait at least one week
 before starting to actualy use their wallet.
 
 A Decentralized Hash Table (DHT) is a form of network used to store some content
