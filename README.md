@@ -15,11 +15,9 @@ Experimental Blockchain over DHT
 
 ## Disclaimer
 
-This software and the associated DHT are still Proof Of Concept, and still under development.
-
-A lot of work is needed to reach a real-world usable state.
-
-PR are welcomed !
+This software and the associated DHT are only Proof Of Concept.
+The repo is quite old and not maintained anymore.
+Feel free to fork it but be prepared for a lot of troubles.
 
 ## Background
 
